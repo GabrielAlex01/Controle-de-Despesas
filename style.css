@@ -1,0 +1,544 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f7f9;
+    color: #333;
+}
+
+
+header {
+    background-color: #ffffff;
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #dee2e6;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    color: #0056b3;
+}
+
+#btn-nova-despesa {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+#btn-nova-despesa:hover {
+    background-color: #0056b3;
+}
+
+
+main {
+    padding: 20px 40px;
+}
+
+section {
+    background-color: #ffffff;
+    padding: 20px;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+section h2 {
+    margin-bottom: 20px;
+    color: #343a40;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+
+.table-container {
+    overflow-x: auto; /* Garante que a tabela não quebre o layout em telas pequenas */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+thead th {
+    background-color: #e9ecef;
+    font-weight: bold;
+}
+
+tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* Começa invisível */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-container.active {
+    /* Fica visível com a classe 'active' */
+    opacity: 1;
+    pointer-events: all;
+}
+
+.modal {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal h3 {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.form-buttons {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.form-buttons button[type="submit"] {
+    background-color: #007bff;
+    color: white;
+}
+
+.form-buttons button[type="button"] {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* Estilos do Filtro */
+.filters-container {
+    background-color: #ffffff;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.filters-container label {
+    font-weight: bold;
+}
+
+.filters-container select {
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+}
+
+/* Estilos de Status na Tabela */
+tr.status-pago {
+    background-color: #d4edda; /* Verde claro */
+    border-left: 5px solid #28a745; /* Borda verde escura */
+}
+
+tr.status-pago:hover {
+    background-color: #c3e6cb;
+}
+
+tr.status-pendente {
+    background-color: #f8d7da; /* Vermelho claro */
+    border-left: 5px solid #dc3545; /* Borda vermelha escura */
+}
+
+tr.status-pendente:hover {
+    background-color: #f5c6cb;
+}
+
+
+.btn-perigo {
+    background-color: #dc3545; 
+    color: white;
+}
+
+.btn-perigo:hover {
+    background-color: #c82333;
+}
+
+/* Estilos para o Filtro de Ano */
+.filters-container input[type="number"] {
+    width: 90px;
+    padding: 8px;
+    font-size: 1rem;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Estilos para Botões de Ação na Tabela */
+.btn-editar, .btn-excluir {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    margin: 0 4px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-editar {
+    background-color: #007bff; /* Azul */
+}
+
+.btn-excluir {
+    background-color: #dc3545; /* Vermelho */
+}
+
+/* Efeito ao passar o mouse */
+.btn-editar:hover, .btn-excluir:hover {
+    transform: translateY(-2px); /* Levanta o botão levemente */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Adiciona uma sombra */
+}
+
+/* Estilos do Painel de Resumo */
+#resumo-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.resumo-card {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-grow: 1; /* Faz os cards ocuparem o espaço disponível */
+    text-align: center;
+}
+
+.resumo-card h4 {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.resumo-card span {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #343a40;
+}
+
+/* Estilo especial para o card de Total Geral */
+.resumo-card.total-geral span {
+    color: #007bff; /* Cor de destaque azul */
+}
+
+/* Estilos para o Contêiner do Gráfico */
+#grafico-container {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#grafico-container canvas {
+    width: 100% !important;
+    max-height: 400px;
+}
+
+/* Estilos da Tela de Login */
+#login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: #f4f7f9;
+}
+
+.login-box {
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.login-box h2 {
+    margin-bottom: 25px;
+    color: #333;
+}
+
+.login-box .form-group label {
+    text-align: left;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    background-color: #28a745; /* Verde */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.btn-login:hover {
+    background-color: #218838;
+}
+
+/* Estilos para o Cabeçalho com Logout */
+header div {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#usuario-logado {
+    font-weight: bold;
+    color: #555;
+}
+
+#btn-logout {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+#btn-logout:hover {
+    background-color: #5a6268;
+}
+
+/* Adicione ao final do seu style.css */
+#btn-gerenciar-usuarios {
+    background-color: #ffc107; /* Amarelo */
+    color: #212529;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+#btn-gerenciar-usuarios:hover {
+    background-color: #e0a800;
+}
+
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.section-header h2 {
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+#btn-adicionar-usuario {
+    background-color: #28a745; /* Verde */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+#btn-adicionar-usuario:hover {
+    background-color: #218838;
+}
+
+/* Adicione este código ao final do arquivo style.css */
+
+#btn-alterar-senha {
+    background-color: #17a2b8; /* Um azul-petróleo (info) */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+#btn-alterar-senha:hover {
+    background-color: #138496;
+}
+
+header a#btn-dashboard {
+    color: inherit; /* Herda a cor do elemento filho (o h1) */
+    text-decoration: none; /* Remove o sublinhado */
+    cursor: pointer;
+}
+
+/* Adicione ao final do seu style.css */
+.btn-excluir-usuario {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    margin: 0 4px;
+    background-color: #dc3545; /* Vermelho */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-excluir-usuario:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Adicione no final do seu style.css */
+
+/* Estilo para o botão de editar usuário na tabela */
+.btn-editar-usuario {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    margin: 0 4px;
+    background-color: #007bff; /* Azul */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* NOVO: Estilo para quando o botão estiver desabilitado */
+.btn-editar-usuario:disabled {
+    background-color: #6c757d; /* Cinza */
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.btn-editar-usuario:disabled:hover {
+     background-color: #6c757d; /* Mantém o cinza no hover */
+}
+
+/* Adicione no final do seu style.css */
+
+#btn-ver-logs {
+    background-color: #6f42c1; /* Roxo/Índigo */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+#btn-ver-logs:hover {
+    background-color: #5a349b;
+}
+
+/* Adicione no final do seu style.css */
+.paginacao-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 0 10px;
+    gap: 15px;
+}
+.paginacao-container button {
+    padding: 8px 16px;
+    border: 1px solid #dee2e6;
+    background-color: #ffffff;
+    cursor: pointer;
+    border-radius: 5px;
+}
+.paginacao-container button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.paginacao-container span {
+    font-weight: bold;
+}

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Despesas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+
+<body>
+
+    <div id="login-container">
+        <div class="login-box">
+            <h2>Acessar o Sistema</h2>
+            <form id="form-login">
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="login-senha" required>
+                </div>
+                <button type="submit" class="btn-login">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-container" style="display: none;">
+        <header>
+            <a href="#" id="btn-dashboard">
+                <h1>Controle de Despesas</h1>
+            </a>
+            <div>
+                <span id="usuario-logado"></span>
+                <button id="btn-alterar-senha">Alterar Senha</button>
+                <button id="btn-ver-logs" style="display: none;">Ver Logs</button>
+                <button id="btn-gerenciar-usuarios" style="display: none;">Gerenciar Usuários</button>
+                <button id="btn-nova-despesa">Adicionar Nova Despesa</button>
+                <button id="btn-logout">Sair</button>
+            </div>
+        </header>
+
+        <main>
+
+            <section id="gerenciamento-usuarios-container" style="display: none;">
+                <div class="section-header">
+                    <h2>Gerenciamento de Usuários</h2>
+                    <button id="btn-adicionar-usuario">Adicionar Novo Usuário</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Papel</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-usuarios">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+
+            <section id="logs-container" style="display: none;">
+                <h2>Logs do Sistema</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data e Hora</th>
+                                <th>Usuário</th>
+                                <th>Ação Realizada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-logs">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="paginacao-container" id="logs-paginacao-container">
+                    <button id="btn-logs-anterior" disabled>&laquo; Anterior</button>
+                    <span id="logs-paginacao-info">Página 1 de 1</span>
+                    <button id="btn-logs-proximo" disabled>Próximo &raquo;</button>
+                </div>
+            </section>
+
+            <div id="resumo-container">
+                <div class="resumo-card">
+                    <h4>Total Comercial</h4>
+                    <span id="total-comercial">R$ 0,00</span>
+                </div>
+                <div class="resumo-card">
+                    <h4>Total Serviços</h4>
+                    <span id="total-servicos">R$ 0,00</span>
+                </div>
+                <div class="resumo-card">
+                    <h4>Total Desp. Extras</h4>
+                    <span id="total-despesas-extras">R$ 0,00</span>
+                </div>
+                <div class="resumo-card total-geral">
+                    <h4>Total Geral do Mês</h4>
+                    <span id="total-geral">R$ 0,00</span>
+                </div>
+            </div>
+            <div class="filters-container">
+                <label for="filtro-mes">Filtrar por Vencimento:</label>
+                <select id="filtro-mes">
+                    <option value="todos">Todos os Meses</option>
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+                <input type="number" id="filtro-ano" placeholder="Ano" value="2025">
+            </div>
+            <section id="comercial">
+                <h2>Comercial</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fornecedor/Título</th>
+                                <th>Valor</th>
+                                <th>Vencimento</th>
+                                <th>Periodicidade</th>
+                                <th>Nota Fiscal</th>
+                                <th>Situação Financeiro</th>
+                                <th>Situação Fiscal</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-comercial">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="servicos">
+                <h2>Serviços</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fornecedor/Título</th>
+                                <th>Valor</th>
+                                <th>Vencimento</th>
+                                <th>Periodicidade</th>
+                                <th>Nota Fiscal</th>
+                                <th>Situação Financeiro</th>
+                                <th>Situação Fiscal</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-servicos">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="despesas-extras">
+                <h2>Despesas Extras</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fornecedor/Título</th>
+                                <th>Valor</th>
+                                <th>Vencimento</th>
+                                <th>Periodicidade</th>
+                                <th>Nota Fiscal</th>
+                                <th>Situação Financeiro</th>
+                                <th>Situação Fiscal</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-despesas-extras">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="grafico-container">
+                <h2>Análise Mensal de Despesas</h2>
+                <canvas id="grafico-despesas"></canvas>
+            </section>
+
+        </main>
+
+
+        <footer>
+            <p>Controle de Despesas</p>
+        </footer>
+
+        <div id="modal-container" class="modal-container">
+
+            <div class="modal">
+                <h3 id="modal-titulo">Nova Despesa</h3>
+                <form id="form-despesa">
+                    <input type="hidden" id="despesa-id">
+
+                    <div class="form-group">
+                        <label for="fornecedor">Fornecedor/Título</label>
+                        <input type="text" id="fornecedor" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="valor">Valor (R$)</label>
+                        <input type="number" id="valor" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vencimento">Vencimento</label>
+                        <input type="date" id="vencimento" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="categoria">Categoria</label>
+                        <select id="categoria" required>
+                            <option value="comercial">Comercial</option>
+                            <option value="servicos">Serviços</option>
+                            <option value="despesas-extras">Despesas Extras</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="periodicidade">Periodicidade</label>
+                        <select id="periodicidade" required>
+                            <option value="Unica">Única</option>
+                            <option value="Mensal">Mensal</option>
+                            <option value="Anual">Anual</option>
+                            <option value="Parcelada">Parcelada</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="container-parcelas" style="display: none;">
+                        <label for="numero-parcelas">Número de Parcelas</label>
+                        <input type="number" id="numero-parcelas" min="2">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="situacao-financeiro">Situação Financeiro (Boleto)</label>
+                        <select id="situacao-financeiro" required>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Entregue">Entregue</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="situacao-fiscal">Situação Fiscal (Nota Fiscal)</label>
+                        <select id="situacao-fiscal" required>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Entregue">Entregue</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nota-fiscal">Número da Nota Fiscal</label>
+                        <input type="text" id="nota-fiscal" placeholder="Ex: 123456">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" required>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Pago">Pago</option>
+                        </select>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="button" id="btn-cancelar">Cancelar</button>
+                        <button type="submit">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-excluir-container" class="modal-container">
+            <div class="modal">
+                <h3>Confirmar Exclusão</h3>
+                <p>Você tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.</p>
+                <div class="form-buttons">
+                    <button type="button" id="btn-excluir-cancelar">Cancelar</button>
+                    <button type="button" id="btn-excluir-confirmar" class="btn-perigo">Confirmar Exclusão</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-papel-container" class="modal-container">
+            <div class="modal">
+                <h3>Alterar Papel do Usuário</h3>
+                <form id="form-papel">
+                    <input type="hidden" id="usuario-id-papel">
+                    <p>Usuário: <strong id="nome-usuario-papel"></strong></p>
+
+                    <div class="form-group">
+                        <label for="select-papel">Novo Papel</label>
+                        <select id="select-papel" required>
+                            <option value="visualizador">Visualizador</option>
+                            <option value="editor">Editor</option>
+                            <option value="mestre">Mestre</option>
+                        </select>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="button" id="btn-papel-cancelar">Cancelar</button>
+                        <button type="submit" id="btn-papel-salvar">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-registrar-container" class="modal-container">
+            <div class="modal">
+                <h3>Adicionar Novo Usuário</h3>
+                <form id="form-registrar">
+                    <div class="form-group">
+                        <label for="registrar-nome">Nome</label>
+                        <input type="text" id="registrar-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registrar-email">E-mail</label>
+                        <input type="email" id="registrar-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registrar-senha">Senha Provisória</label>
+                        <input type="password" id="registrar-senha" required>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="button" id="btn-registrar-cancelar">Cancelar</button>
+                        <button type="submit">Criar Usuário</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-senha-container" class="modal-container">
+            <div class="modal">
+                <h3>Alterar Minha Senha</h3>
+                <form id="form-senha">
+                    <div class="form-group">
+                        <label for="senha-atual">Senha Atual</label>
+                        <input type="password" id="senha-atual" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nova-senha">Nova Senha</label>
+                        <input type="password" id="nova-senha" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmar-nova-senha">Confirmar Nova Senha</label>
+                        <input type="password" id="confirmar-nova-senha" required>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="button" id="btn-senha-cancelar">Cancelar</button>
+                        <button type="submit">Salvar Nova Senha</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-excluir-usuario-container" class="modal-container">
+            <div class="modal">
+                <h3>Confirmar Exclusão de Usuário</h3>
+                <p>Você tem certeza que deseja excluir o usuário <strong id="nome-usuario-excluir"></strong>? Esta ação
+                    é permanente e não pode ser desfeita.</p>
+                <div class="form-buttons">
+                    <button type="button" id="btn-excluir-usuario-cancelar">Cancelar</button>
+                    <button type="button" id="btn-excluir-usuario-confirmar" class="btn-perigo">Confirmar
+                        Exclusão</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="app.js" defer></script>
+</body>
+
+</html>
