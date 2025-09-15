@@ -158,7 +158,7 @@ CREATE TABLE logs (
 
 -- Execute este comando
 
-GRANT USAGE ON . TO 'root'@'localhost' IDENTIFIED BY 'SUA_SENHA_AQUI';
+GRANT USAGE ON *.* TO 'root'@'localhost' IDENTIFIED BY 'SUA_SENHA_AQUI';
 FLUSH PRIVILEGES;
 
 -- Crie o primeiro usuário Mestre manualmente para iniciar o sistema
