@@ -1,4 +1,4 @@
-# Sistema de Controle de Despesas de T.I.
+# Sistema de Controle de Despesas
 
 ![Status do Projeto](https://img.shields.io/badge/status-concluído-green)
 ![Licença](https://img.shields.io/badge/license-MIT-blue)
