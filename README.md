@@ -156,6 +156,11 @@ CREATE TABLE logs (
     FOREIGN KEY (despesa_id) REFERENCES despesas(id) ON DELETE SET NULL
 );
 
+-- Execute este comando
+
+GRANT USAGE ON . TO 'root'@'localhost' IDENTIFIED BY 'SUA_SENHA_AQUI';
+FLUSH PRIVILEGES;
+
 -- Crie o primeiro usuário Mestre manualmente para iniciar o sistema
 -- Lembre-se de usar uma senha forte e gerar o hash dela para inserir aqui.
 -- INSERT INTO usuarios (nome, email, senha_hash, papel) VALUES ('Admin', 'admin@empresa.com', 'seu_hash_bcrypt_aqui', 'mestre');
