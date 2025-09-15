@@ -78,16 +78,22 @@ Siga este passo a passo para configurar e rodar o projeto em um novo ambiente de
     ```bash
     npm install
     ```
-4.  Crie um arquivo chamado `.env` na raiz desta pasta.
+4.  Dê o comando a seguir e anote a chave Hash, você irá utiliza-la mais para frente.
 
-5.  Copie e cole o conteúdo abaixo no arquivo `.env`, substituindo pelos seus dados:
+    ```bash
+    node gerar-hash.js
+    ```
+
+5.  Crie um arquivo chamado `.env` na raiz desta pasta.
+
+6.  Copie e cole o conteúdo abaixo no arquivo `.env`, substituindo pelos seus dados:
     ```env
     DB_PASSWORD="a_senha_que_voce_criou_para_o_mariadb"
     JWT_SECRET="crie_uma_chave_longa_e_aleatoria_aqui"
     EMAIL_USER="seu_email_de_envio@gmail.com"
     EMAIL_PASS="sua_senha_de_app_de_16_letras_do_gmail"
     ```
-6.  Inicie o servidor em modo de desenvolvimento. Ele irá reiniciar automaticamente a cada alteração no código.
+7.  Inicie o servidor em modo de desenvolvimento. Ele irá reiniciar automaticamente a cada alteração no código.
     ```bash
     npm run dev
     ```
