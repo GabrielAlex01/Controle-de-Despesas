@@ -1,5 +1,4 @@
 "use strict";
-// app.ts (FRONT-END) - Versão COMPLETA E CORRIGIDA a partir do seu backup
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -10,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 console.log("app.ts foi carregado e está sendo executado.");
-// --- Constantes Globais ---
+// onstantes Globais ---
 const API_BASE_URL = 'http://localhost:3000/api';
 let meuGrafico = null;
 let graficoRelatorio = null;
@@ -21,7 +20,7 @@ let idUsuarioParaExcluir = null;
 let logsPaginaAtual = 1;
 const LOGS_POR_PAGINA = 20;
 let usuarioLogado = null;
-// ---- Seletores de Elementos do DOM ----
+// Seletores de Elementos do DOM
 const loginContainer = document.getElementById('login-container');
 const appContainer = document.getElementById('app-container');
 const formLogin = document.getElementById('form-login');
@@ -170,7 +169,7 @@ function renderizarRelatorio(fornecedor, dados) {
         tabelaRelatorioBody.appendChild(tr);
     });
 }
-// --- LÓGICA DE CONTROLE DE UI (LOGIN/APP) ---
+// LÓGICA DE CONTROLE DE UI (LOGIN/APP) 
 function mostrarTelaLogin() {
     loginContainer.style.display = 'flex';
     appContainer.style.display = 'none';
@@ -391,7 +390,7 @@ function handleFormSubmit(event) {
             situacaoFinanceiro: situacaoFinanceiroInput.value,
             situacaoFiscal: situacaoFiscalInput.value,
             status: statusInput.value,
-            // --- Adiciona os novos campos ---
+            // Adiciona os novos campos 
             tem_valor_fixo: temValorFixoCheckbox.checked,
             valor_fixo: temValorFixoCheckbox.checked ? valorFixoInput.valueAsNumber : null
         };
@@ -684,7 +683,7 @@ function handleTabelasClick(event) {
         else if (target.classList.contains('btn-excluir')) {
             excluirDespesa(id);
         }
-        else if (target.classList.contains('btn-relatorio')) { // --- LÓGICA NOVA ---
+        else if (target.classList.contains('btn-relatorio')) {
             modalRelatorioContainer.classList.add('active');
             // Mostra um "carregando" enquanto busca os dados
             tabelaRelatorioBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
