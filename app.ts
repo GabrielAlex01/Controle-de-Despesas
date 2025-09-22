@@ -1,5 +1,6 @@
 // app.ts (FRONT-END) - Versão COMPLETA E CORRIGIDA a partir do seu backup
 
+console.log("app.ts foi carregado e está sendo executado.");
 // --- Constantes Globais ---
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -16,6 +17,8 @@ interface Despesa {
     situacaoFiscal: 'Pendente' | 'Entregue';
     status: 'Pendente' | 'Pago';
     total_parcelas?: number;
+    tem_valor_fixo?: boolean; 
+    valor_fixo?: number;    
 }
 
 // Interface para o usuário logado
@@ -30,6 +33,7 @@ interface Usuario {
 // ---- Variáveis de Estado da Aplicação ----
 declare const Chart: any;
 let meuGrafico: any = null;
+let graficoRelatorio: any = null;
 let despesas: Despesa[] = [];
 let idEmEdicao: number | null = null;
 let idParaExcluir: number | null = null;
@@ -109,6 +113,21 @@ const logsPaginacaoContainer = document.getElementById('logs-paginacao-container
 const btnLogsAnterior = document.getElementById('btn-logs-anterior') as HTMLButtonElement;
 const btnLogsProximo = document.getElementById('btn-logs-proximo') as HTMLButtonElement;
 const logsPaginacaoInfo = document.getElementById('logs-paginacao-info') as HTMLSpanElement;
+const forgotPasswordLink = document.getElementById('forgot-password-link') as HTMLAnchorElement;
+console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink); // <-- Adicionar aqui
+const modalForgotPasswordContainer = document.getElementById('modal-forgot-password-container') as HTMLDivElement;
+console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer); // <-- E aqui
+const formForgotPassword = document.getElementById('form-forgot-password') as HTMLFormElement;
+const forgotEmailInput = document.getElementById('forgot-email') as HTMLInputElement;
+const btnForgotCancelar = document.getElementById('btn-forgot-cancelar') as HTMLButtonElement;
+const modalRelatorioContainer = document.getElementById('modal-relatorio-container') as HTMLDivElement;
+const relatorioTitulo = document.getElementById('relatorio-titulo') as HTMLHeadingElement;
+const graficoRelatorioCanvas = document.getElementById('grafico-relatorio-despesa') as HTMLCanvasElement;
+const tabelaRelatorioBody = document.getElementById('tabela-relatorio-body') as HTMLTableSectionElement;
+const btnRelatorioFechar = document.getElementById('btn-relatorio-fechar') as HTMLButtonElement;
+const temValorFixoCheckbox = document.getElementById('tem-valor-fixo') as HTMLInputElement;
+const containerValorFixo = document.getElementById('container-valor-fixo') as HTMLDivElement;
+const valorFixoInput = document.getElementById('valor-fixo') as HTMLInputElement;
 
 // Seções principais da tela de despesas
 const secoesPrincipais = [
@@ -120,6 +139,59 @@ const secoesPrincipais = [
     document.getElementById('grafico-container')
 ];
 
+// Função para buscar os dados do relatório no back-end
+async function fetchRelatorioData(fornecedor: string) {
+    try {
+        // encodeURIComponent trata espaços e caracteres especiais no nome do fornecedor para a URL
+        const response = await fetchComToken(`${API_BASE_URL}/despesas/relatorio/${encodeURIComponent(fornecedor)}`);
+        if (!response.ok) throw new Error('Falha ao buscar dados do relatório.');
+        return await response.json();
+    } catch (error) {
+        console.error(error);
+        alert('Não foi possível carregar os dados do relatório.');
+        return [];
+    }
+}
+
+// Função para renderizar o gráfico e a tabela no modal
+function renderizarRelatorio(fornecedor: string, dados: { valor: string, vencimento: string }[]) {
+    relatorioTitulo.innerText = `Relatório de: ${fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim()}`;
+
+    // Prepara os dados para o gráfico
+    const labels = dados.map(d => new Date(d.vencimento).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' }));
+    const valores = dados.map(d => parseFloat(d.valor));
+
+    // Renderiza o gráfico
+    const ctx = graficoRelatorioCanvas.getContext('2d');
+    if (!ctx) return;
+    if (graficoRelatorio) graficoRelatorio.destroy(); // Destrói o gráfico anterior
+
+    graficoRelatorio = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Valor (R$)',
+                data: valores,
+                borderColor: 'rgba(0, 123, 255, 1)',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Preenche a tabela de histórico
+    tabelaRelatorioBody.innerHTML = '';
+    dados.forEach(d => {
+        const tr = document.createElement('tr');
+        const dataFormatada = new Date(d.vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        const valorFormatado = Number(d.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        tr.innerHTML = `<td>${dataFormatada}</td><td>${valorFormatado}</td>`;
+        tabelaRelatorioBody.appendChild(tr);
+    });
+}
 
 // --- LÓGICA DE CONTROLE DE UI (LOGIN/APP) ---
 function mostrarTelaLogin() {
@@ -131,14 +203,14 @@ function mostrarTelaLogin() {
 function mostrarTelaApp() {
     loginContainer.style.display = 'none';
     appContainer.style.display = 'block';
-    
+
     // Esconde as telas "especiais"
     gerenciamentoUsuariosContainer.style.display = 'none';
     logsContainer.style.display = 'none';
 
     // Mostra todas as seções da tela principal de despesas
     secoesPrincipais.forEach(el => {
-        if(el) {
+        if (el) {
             const element = el as HTMLElement;
             element.style.display = element.id === 'resumo-container' || element.classList.contains('filters-container') ? 'flex' : 'block';
         }
@@ -148,11 +220,11 @@ function mostrarTelaApp() {
 // Nova função para mostrar a tela de gerenciamento de usuários
 function mostrarTelaGerenciamentoUsuarios() {
     // Esconde as seções da tela principal
-    secoesPrincipais.forEach(el => { if(el) (el as HTMLElement).style.display = 'none'; });
-    
+    secoesPrincipais.forEach(el => { if (el) (el as HTMLElement).style.display = 'none'; });
+
     // Esconde a tela de logs
     logsContainer.style.display = 'none';
-    
+
     // Mostra apenas a tela de gerenciamento de usuários
     gerenciamentoUsuariosContainer.style.display = 'block';
 }
@@ -160,7 +232,7 @@ function mostrarTelaGerenciamentoUsuarios() {
 // Adicione esta nova função junto com as outras de navegação
 function mostrarTelaLogs() {
     // Esconde as seções da tela principal
-    secoesPrincipais.forEach(el => { if(el) (el as HTMLElement).style.display = 'none'; });
+    secoesPrincipais.forEach(el => { if (el) (el as HTMLElement).style.display = 'none'; });
 
     // Esconde a tela de gerenciamento de usuários
     gerenciamentoUsuariosContainer.style.display = 'none';
@@ -251,7 +323,7 @@ async function carregarUsuariosDoBackend() {
         if (response.status === 401 || response.status === 403) return handleLogout();
         if (!response.ok) throw new Error('Falha ao buscar usuários');
         const usuarios: Usuario[] = await response.json();
-        
+
         tabelaUsuariosBody.innerHTML = '';
         usuarios.forEach((usuario: Usuario) => {
             const tr = document.createElement('tr');
@@ -325,6 +397,24 @@ async function carregarLogsDoBackend(pagina = 1) {
 // LÓGICA DE FORMULÁRIOS E MODAIS
 async function handleFormSubmit(event: SubmitEvent) {
     event.preventDefault();
+    if (idEmEdicao !== null && statusInput.value === 'Pago') {
+        const despesaOriginal = despesas.find(d => d.id === idEmEdicao);
+        if (despesaOriginal && despesaOriginal.tem_valor_fixo) {
+            const valorPago = valorInput.valueAsNumber;
+            const valorFixo = Number(despesaOriginal.valor_fixo);
+            if (valorPago !== valorFixo) {
+                const confirmou = confirm(
+                    'ATENÇÃO: O valor pago (R$ ' + valorPago.toFixed(2) +
+                    ') é diferente do valor fixo cadastrado (R$ ' + valorFixo.toFixed(2) +
+                    ').\n\nDeseja continuar? Uma notificação será enviada aos administradores.'
+                );
+                if (!confirmou) {
+                    return; // Cancela o envio do formulário
+                }
+            }
+        }
+    }
+
     const dadosForm: any = {
         fornecedor: fornecedorInput.value,
         valor: valorInput.valueAsNumber,
@@ -335,11 +425,16 @@ async function handleFormSubmit(event: SubmitEvent) {
         situacaoFinanceiro: situacaoFinanceiroInput.value,
         situacaoFiscal: situacaoFiscalInput.value,
         status: statusInput.value,
+        // --- Adiciona os novos campos ---
+        tem_valor_fixo: temValorFixoCheckbox.checked,
+        valor_fixo: temValorFixoCheckbox.checked ? valorFixoInput.valueAsNumber : null
     };
+
     if (dadosForm.periodicidade === 'Parcelada') {
         dadosForm.numero_parcelas = parseInt(numeroParcelasInput.value, 10);
         dadosForm.total_parcelas = parseInt(numeroParcelasInput.value, 10);
     }
+
     try {
         let response;
         if (idEmEdicao !== null) {
@@ -363,8 +458,8 @@ async function handleFormSubmit(event: SubmitEvent) {
         console.error('Erro ao salvar despesa:', error);
         alert(`Não foi possível salvar a despesa: ${error.message}`);
     }
-
-}// Função para abrir o modal de nova despesa ou edição
+}
+// Função para abrir o modal de nova despesa ou edição
 function abrirModal(paraEditar = false, despesa?: Despesa) {
     modalTitulo.innerText = paraEditar ? 'Editar Despesa' : 'Nova Despesa';
     formDespesa.reset();
@@ -379,6 +474,15 @@ function abrirModal(paraEditar = false, despesa?: Despesa) {
         situacaoFinanceiroInput.value = despesa.situacaoFinanceiro;
         situacaoFiscalInput.value = despesa.situacaoFiscal;
         statusInput.value = despesa.status;
+        temValorFixoCheckbox.checked = despesa.tem_valor_fixo || false;
+        if (temValorFixoCheckbox.checked) {
+            containerValorFixo.style.display = 'block';
+            valorFixoInput.required = true;
+            valorFixoInput.value = despesa.valor_fixo?.toString() || '';
+        } else {
+            containerValorFixo.style.display = 'none';
+            valorFixoInput.required = false;
+        }
         const regexParcela = /\(Parcela \d+\/(\d+)\)/;
         const match = despesa.fornecedor.match(regexParcela);
         if (match) {
@@ -463,6 +567,15 @@ function renderizarTabelas() {
         const tr = document.createElement('tr');
         tr.className = `status-${despesa.status?.toLowerCase() || 'pendente'}`;
         tr.dataset.id = despesa.id.toString();
+        let botoesAcaoHtml = ''; // Começa sem botões
+        if (usuarioLogado && (usuarioLogado.papel === 'editor' || usuarioLogado.papel === 'mestre')) {
+            botoesAcaoHtml = `
+        <button class="btn-editar">Editar</button>
+        <button class="btn-excluir">Excluir</button>
+        <button class="btn-relatorio">Relatório</button> `;
+        } else {
+            botoesAcaoHtml = `<button class="btn-relatorio">Relatório</button>`; // Visualizador só vê o relatório
+        }
         const valorFormatado = Number(despesa.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const dataFormatada = new Date(despesa.vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
         tr.innerHTML = `
@@ -474,8 +587,7 @@ function renderizarTabelas() {
             <td>${despesa.situacaoFinanceiro}</td>
             <td>${despesa.situacaoFiscal}</td>
             <td>
-                <button class="btn-editar">Editar</button>
-                <button class="btn-excluir">Excluir</button>
+                ${botoesAcaoHtml}
             </td>
         `;
         switch (despesa.categoria) {
@@ -570,18 +682,25 @@ formRegistrar.addEventListener('submit', async (event) => {
     }
 });
 
-function handleTabelasClick(event: MouseEvent) {
+async function handleTabelasClick(event: MouseEvent) { // Adicionado async
     const target = event.target as HTMLElement;
     const tr = target.closest('tr');
     if (!tr || !tr.dataset.id) return;
+
     const id = parseInt(tr.dataset.id, 10);
     const despesa = despesas.find(d => d.id === id);
     if (!despesa) return;
+
     if (target.classList.contains('btn-editar')) {
         abrirModal(true, despesa);
-    }
-    if (target.classList.contains('btn-excluir')) {
+    } else if (target.classList.contains('btn-excluir')) {
         excluirDespesa(id);
+    } else if (target.classList.contains('btn-relatorio')) { // --- LÓGICA NOVA ---
+        modalRelatorioContainer.classList.add('active');
+        // Mostra um "carregando" enquanto busca os dados
+        tabelaRelatorioBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
+        const dadosRelatorio = await fetchRelatorioData(despesa.fornecedor);
+        renderizarRelatorio(despesa.fornecedor, dadosRelatorio);
     }
 }
 tabelaComercialBody.addEventListener('click', handleTabelasClick);
@@ -596,7 +715,7 @@ tabelaUsuariosBody.addEventListener('click', async (event) => {
 
     // Lógica para ALTERAR PAPEL (já existente, com pequena melhoria)
     if (target.classList.contains('btn-editar-usuario')) {
-        const usuarioParaEditar = { id: parseInt(id), nome: nome, papel: (target.closest('tr')?.children[3].textContent || 'visualizador') as Usuario['papel']};
+        const usuarioParaEditar = { id: parseInt(id), nome: nome, papel: (target.closest('tr')?.children[3].textContent || 'visualizador') as Usuario['papel'] };
         usuarioIdPapelInput.value = usuarioParaEditar.id.toString();
         nomeUsuarioPapelSpan.innerText = usuarioParaEditar.nome;
         selectPapel.value = usuarioParaEditar.papel;
@@ -704,7 +823,7 @@ formSenha.addEventListener('submit', async (event) => {
         fecharModalSenha();
 
         // Força o logout e o recarregamento para a tela de login
-        handleLogout(); 
+        handleLogout();
 
     } catch (error: any) {
         console.error('Erro ao alterar senha:', error);
@@ -714,7 +833,7 @@ formSenha.addEventListener('submit', async (event) => {
 
 btnVerLogs.addEventListener('click', () => {
     mostrarTelaLogs();
-    carregarLogsDoBackend(1); 
+    carregarLogsDoBackend(1);
 });
 
 btnDashboard.addEventListener('click', (event) => {
@@ -762,4 +881,56 @@ btnLogsAnterior.addEventListener('click', () => {
 btnLogsProximo.addEventListener('click', () => {
     // A lógica de desabilitar o botão já previne isso, mas é uma segurança extra
     carregarLogsDoBackend(logsPaginaAtual + 1);
+});
+
+// Abre o modal de "esqueci a senha"
+console.log("Adicionando listener de clique ao link..."); // <-- Adicionar aqui
+forgotPasswordLink.addEventListener('click', (e) => {
+    console.log("LINK FOI CLICADO!"); // <-- Adicionar aqui
+    e.preventDefault();
+    modalForgotPasswordContainer.classList.add('active');
+});
+
+// Fecha o modal
+btnForgotCancelar.addEventListener('click', () => {
+    modalForgotPasswordContainer.classList.remove('active');
+});
+
+// Envia o e-mail de redefinição
+formForgotPassword.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = forgotEmailInput.value;
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        if (!response.ok) {
+            // Se a resposta não for OK (ex: erro 500), lança um erro para o catch.
+            throw new Error('O servidor retornou um erro. Tente novamente mais tarde.');
+        }
+        const data = await response.json();
+        // Mostramos a mesma mensagem sempre, por segurança
+        alert(data.message);
+        modalForgotPasswordContainer.classList.remove('active');
+        formForgotPassword.reset();
+    } catch (error) {
+        console.error('Erro ao solicitar redefinição:', error);
+        alert('Ocorreu um erro. Tente novamente.');
+    }
+});
+
+btnRelatorioFechar.addEventListener('click', () => {
+    modalRelatorioContainer.classList.remove('active');
+});
+
+temValorFixoCheckbox.addEventListener('change', () => {
+    if (temValorFixoCheckbox.checked) {
+        containerValorFixo.style.display = 'block';
+        valorFixoInput.required = true;
+    } else {
+        containerValorFixo.style.display = 'none';
+        valorFixoInput.required = false;
+    }
 });

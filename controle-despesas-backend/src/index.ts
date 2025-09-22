@@ -9,6 +9,7 @@ import { verificarToken, verificarPapel, RequestComUsuario } from './middleware/
 import 'dotenv/config';
 import nodemailer from 'nodemailer';
 import cron from 'node-cron';
+import { randomBytes } from 'crypto';
 
 // Configurações da conexão com o banco de dados
 const pool = mariadb.createPool({
@@ -174,6 +175,124 @@ app.get('/', async (req, res) => {
         res.send(`<h1>Conectado ao MariaDB com sucesso!</h1><p>Resultado do teste: ${rows[0].val}</p>`);
     } catch (err) {
         res.status(500).send("<h1>Falha ao conectar com o banco de dados.</h1>");
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Endpoint para buscar o histórico de uma despesa para o relatório
+app.get('/api/despesas/relatorio/:fornecedor', verificarToken, async (req, res) => {
+    let { fornecedor } = req.params;
+    let conn;
+
+    try {
+        conn = await pool.getConnection();
+
+        // Limpa o nome do fornecedor para buscar todas as parcelas/ocorrências
+        // Ex: "Conta de Luz (Parcela 1/12)" vira "Conta de Luz"
+        const nomeBaseFornecedor = fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim();
+
+        // Usamos LIKE para pegar todas as despesas que começam com o nome base
+        const sql = "SELECT valor, vencimento FROM despesas WHERE fornecedor LIKE ? AND status = 'Pago' ORDER BY vencimento ASC";
+        const historico = await conn.query(sql, [`${nomeBaseFornecedor}%`]);
+
+        res.json(historico);
+
+    } catch (err) {
+        console.error("Erro ao buscar histórico da despesa:", err);
+        res.status(500).json({ error: 'Erro interno ao buscar histórico da despesa.' });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// ENDPOINT SOLICITAR REDEFINIÇÃO DE SENHA
+app.post('/api/auth/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const [usuario] = await conn.query("SELECT * FROM usuarios WHERE email = ?", [email]);
+
+        // IMPORTANTE: Mesmo que o usuário не seja encontrado, enviamos uma resposta de sucesso
+        // para evitar que hackers descubram quais e-mails estão cadastrados.
+        if (!usuario) {
+            return res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de redefinição foi enviado.' });
+        }
+
+        // 1. Gerar um token seguro e aleatório
+        const resetToken = randomBytes(32).toString('hex');
+        
+        // 2. Salvar o token "hasheado" no banco de dados para segurança (opcional, mas recomendado)
+        // Para simplificar, salvaremos o token direto, mas em produção o ideal seria salvar o hash do token.
+        // Vamos definir uma expiração de 1 hora.
+        const expires = new Date(Date.now() + 3600000); // 1 hora a partir de agora
+
+        const sqlUpdate = "UPDATE usuarios SET reset_token = ?, reset_token_expires = ? WHERE id = ?";
+        await conn.query(sqlUpdate, [resetToken, expires, usuario.id]);
+
+        // 3. Enviar o e-mail com o link de redefinição
+        // ATENÇÃO: A URL deve apontar para o seu front-end. O padrão do Live Server é 127.0.0.1:5500
+        const resetUrl = `http://127.0.0.1:5500/reset-password.html?token=${resetToken}`;
+        const htmlEmail = `
+            <h1>Redefinição de Senha</h1>
+            <p>Olá, ${usuario.nome}.</p>
+            <p>Você solicitou uma redefinição de senha. Por favor, clique no link abaixo para criar uma nova senha:</p>
+            <a href="${resetUrl}" target="_blank">Redefinir Minha Senha</a>
+            <p>Se você não solicitou isso, por favor, ignore este e-mail.</p>
+            <p>Este link é válido por 1 hora.</p>
+        `;
+
+        await transporter.sendMail({
+            from: `"Controle de Despesas" <${process.env.EMAIL_USER}>`,
+            to: usuario.email,
+            subject: 'Link para Redefinição de Senha',
+            html: htmlEmail,
+        });
+
+        res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de redefinição foi enviado.' });
+
+    } catch (err) {
+        console.error("Erro em forgot-password:", err);
+        res.status(500).json({ error: 'Erro interno no servidor.' });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// ENDPOINT EFETIVAMENTE REDEFINIR A SENHA
+app.post('/api/auth/reset-password', async (req, res) => {
+    const { token, novaSenha } = req.body;
+    
+    if (!token || !novaSenha) {
+        return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        // 1. Encontra o usuário pelo token E verifica se ele não expirou
+        const sqlFind = "SELECT * FROM usuarios WHERE reset_token = ? AND reset_token_expires > NOW()";
+        const [usuario] = await conn.query(sqlFind, [token]);
+
+        if (!usuario) {
+            return res.status(400).json({ error: 'Token inválido ou expirado.' });
+        }
+
+        // 2. Se o token é válido, cria o hash da nova senha
+        const saltRounds = 10;
+        const novaSenhaHash = await bcrypt.hash(novaSenha, saltRounds);
+
+        // 3. Atualiza a senha e NULIFICA o token para que não possa ser usado de novo
+        const sqlUpdate = "UPDATE usuarios SET senha_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?";
+        await conn.query(sqlUpdate, [novaSenhaHash, usuario.id]);
+
+        res.status(200).json({ message: 'Senha redefinida com sucesso!' });
+        
+    } catch (err) {
+        console.error("Erro em reset-password:", err);
+        res.status(500).json({ error: 'Erro interno no servidor.' });
     } finally {
         if (conn) conn.release();
     }
@@ -383,11 +502,11 @@ app.get('/api/despesas', verificarToken, async (req, res) => {
 });
 
 // Endpoint para CRIAR uma nova despesa
-app.post('/api/despesas', verificarToken, async (req, res) => {
+app.post('/api/despesas', verificarToken, verificarPapel(['editor', 'mestre']), async (req: RequestComUsuario, res) => {
     const {
         fornecedor, valor, vencimento, categoria, periodicidade,
         notaFiscal, situacaoFinanceiro, situacaoFiscal, status,
-        numero_parcelas
+        numero_parcelas, tem_valor_fixo, valor_fixo
     } = req.body;
 
     if (!fornecedor || !valor || !vencimento || !categoria || !periodicidade) {
@@ -397,6 +516,7 @@ app.post('/api/despesas', verificarToken, async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
+        const usuarioIdLog = (req as RequestComUsuario).usuario.id;
 
         if (periodicidade === 'Parcelada' && numero_parcelas >= 2) {
             const dataInicial = new Date(vencimento + 'T03:00:00');
@@ -405,36 +525,38 @@ app.post('/api/despesas', verificarToken, async (req, res) => {
                 const dataParcela = new Date(dataInicial);
                 dataParcela.setMonth(dataInicial.getMonth() + (i - 1));
                 const vencimentoParcela = dataParcela.toISOString().split('T')[0];
+                const fornecedorParcela = `${fornecedor} (Parcela ${i}/${numero_parcelas})`;
 
                 const sql = `
-                    INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, total_parcelas) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, total_parcelas, tem_valor_fixo, valor_fixo) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
                 const params = [
-                    `${fornecedor} (Parcela ${i}/${numero_parcelas})`, valor, vencimentoParcela, categoria,
-                    'Parcelada', notaFiscal, 'Pendente', 'Pendente', 'Pendente', numero_parcelas
+                    fornecedorParcela, valor, vencimentoParcela, categoria,
+                    'Parcelada', notaFiscal, 'Pendente', 'Pendente', 'Pendente', numero_parcelas,
+                    tem_valor_fixo, valor_fixo
                 ];
                 const result = await conn.query(sql, params);
                 const novoId = Number(result.insertId);
-
-                const usuarioIdLog = (req as RequestComUsuario).usuario.id;
-                await registrarLog(`Criou a despesa: "${fornecedor}"`, usuarioIdLog, novoId);
-
-                createdIds.push(Number(result.insertId));
+                await registrarLog(`Criou a despesa: "${fornecedorParcela}"`, usuarioIdLog, novoId);
+                createdIds.push(novoId);
             }
             res.status(201).json({ message: `${numero_parcelas} parcelas criadas com sucesso.`, ids: createdIds });
 
         } else {
             const sql = `
-                INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, tem_valor_fixo, valor_fixo) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
             const params = [
                 fornecedor, valor, vencimento, categoria, periodicidade,
-                notaFiscal, situacaoFinanceiro, situacaoFiscal, status
+                notaFiscal, situacaoFinanceiro, situacaoFiscal, status,
+                tem_valor_fixo, valor_fixo
             ];
             const result = await conn.query(sql, params);
-            res.status(201).json({ id: Number(result.insertId), ...req.body });
+            const novoId = Number(result.insertId);
+            await registrarLog(`Criou a despesa: "${fornecedor}"`, usuarioIdLog, novoId);
+            res.status(201).json({ id: novoId, ...req.body });
         }
     } catch (err) {
         console.error("Erro ao inserir despesa:", err);
@@ -445,7 +567,7 @@ app.post('/api/despesas', verificarToken, async (req, res) => {
 });
 
 // Endpoint para ATUALIZAR uma despesa existente
-app.put('/api/despesas/:id', verificarToken, async (req, res) => {
+app.put('/api/despesas/:id', verificarToken, verificarPapel(['editor', 'mestre']), async (req: RequestComUsuario, res) => {
     const { id } = req.params;
     const dadosAtualizados = req.body;
 
@@ -457,10 +579,9 @@ app.put('/api/despesas/:id', verificarToken, async (req, res) => {
     try {
         conn = await pool.getConnection();
 
-        // Primeiro, buscamos o estado da despesa ANTES de qualquer alteração
+        // Busca o estado da despesa ANTES de qualquer alteração
         const [despesaAntiga] = await conn.query("SELECT * FROM despesas WHERE id = ?", [id]);
         if (!despesaAntiga) {
-            // Se não encontrarmos, liberamos a conexão e retornamos erro
             if (conn) conn.release();
             return res.status(404).json({ error: 'Despesa não encontrada para buscar estado antigo.' });
         }
@@ -468,12 +589,14 @@ app.put('/api/despesas/:id', verificarToken, async (req, res) => {
         const sqlUpdate = `
             UPDATE despesas SET 
             fornecedor = ?, valor = ?, vencimento = ?, categoria = ?, periodicidade = ?, 
-            notaFiscal = ?, situacaoFinanceiro = ?, situacaoFiscal = ?, status = ?, total_parcelas = ?
+            notaFiscal = ?, situacaoFinanceiro = ?, situacaoFiscal = ?, status = ?, 
+            total_parcelas = ?, tem_valor_fixo = ?, valor_fixo = ?
             WHERE id = ?
         `;
         const paramsUpdate = [
             dadosAtualizados.fornecedor, dadosAtualizados.valor, dadosAtualizados.vencimento, dadosAtualizados.categoria, dadosAtualizados.periodicidade,
-            dadosAtualizados.notaFiscal, dadosAtualizados.situacaoFinanceiro, dadosAtualizados.situacaoFiscal, dadosAtualizados.status, dadosAtualizados.total_parcelas,
+            dadosAtualizados.notaFiscal, dadosAtualizados.situacaoFinanceiro, dadosAtualizados.situacaoFiscal, dadosAtualizados.status,
+            dadosAtualizados.total_parcelas, dadosAtualizados.tem_valor_fixo, dadosAtualizados.valor_fixo,
             id
         ];
         const resultUpdate = await conn.query(sqlUpdate, paramsUpdate);
@@ -482,69 +605,82 @@ app.put('/api/despesas/:id', verificarToken, async (req, res) => {
             return res.status(404).json({ error: 'Despesa não encontrada para atualizar.' });
         }
 
-        // LÓGICA DE LOGS DETALHADOS
-
+        // Lógica de Logs Detalhados
         const alteracoes: string[] = [];
-
-        // 1. Compara o Status
-        if (despesaAntiga.status !== dadosAtualizados.status) {
-            alteracoes.push(`Status alterado de '${despesaAntiga.status}' para '${dadosAtualizados.status}'`);
-        }
-        // 2. Compara a Situação Fiscal
-        if (despesaAntiga.situacaoFiscal !== dadosAtualizados.situacaoFiscal) {
-            alteracoes.push(`Situação Fiscal alterada de '${despesaAntiga.situacaoFiscal}' para '${dadosAtualizados.situacaoFiscal}'`);
-        }
-        // 3. Compara a Situação Financeira
-        if (despesaAntiga.situacaoFinanceiro !== dadosAtualizados.situacaoFinanceiro) {
-            alteracoes.push(`Situação Financeira alterada de '${despesaAntiga.situacaoFinanceiro}' para '${dadosAtualizados.situacaoFinanceiro}'`);
-        }
-        // 4. Compara o Valor (convertendo para número para evitar falsos positivos)
-        if (parseFloat(despesaAntiga.valor) !== parseFloat(dadosAtualizados.valor)) {
-            alteracoes.push(`Valor alterado de R$ ${parseFloat(despesaAntiga.valor).toFixed(2)} para R$ ${parseFloat(dadosAtualizados.valor).toFixed(2)}`);
-        }
-        // 5. Compara o Fornecedor/Título
-        if (despesaAntiga.fornecedor !== dadosAtualizados.fornecedor) {
-            alteracoes.push(`Título alterado de "${despesaAntiga.fornecedor}" para "${dadosAtualizados.fornecedor}"`);
-        }
+        if (despesaAntiga.status !== dadosAtualizados.status) alteracoes.push(`Status alterado de '${despesaAntiga.status}' para '${dadosAtualizados.status}'`);
+        if (despesaAntiga.situacaoFiscal !== dadosAtualizados.situacaoFiscal) alteracoes.push(`Situação Fiscal alterada de '${despesaAntiga.situacaoFiscal}' para '${dadosAtualizados.situacaoFiscal}'`);
+        if (despesaAntiga.situacaoFinanceiro !== dadosAtualizados.situacaoFinanceiro) alteracoes.push(`Situação Financeira alterada de '${despesaAntiga.situacaoFinanceiro}' para '${dadosAtualizados.situacaoFinanceiro}'`);
+        if (parseFloat(despesaAntiga.valor) !== parseFloat(dadosAtualizados.valor)) alteracoes.push(`Valor alterado de R$ ${parseFloat(despesaAntiga.valor).toFixed(2)} para R$ ${parseFloat(dadosAtualizados.valor).toFixed(2)}`);
+        if (despesaAntiga.fornecedor !== dadosAtualizados.fornecedor) alteracoes.push(`Título alterado de "${despesaAntiga.fornecedor}" para "${dadosAtualizados.fornecedor}"`);
 
         let descricaoLog: string;
         if (alteracoes.length > 0) {
-            // Se houveram alterações, cria uma descrição detalhada
             descricaoLog = `Alterou a despesa "${despesaAntiga.fornecedor}" (ID: ${id}): ${alteracoes.join(', ')}`;
         } else {
-            // Se não houver alterações nos campos monitorados, mantém uma mensagem genérica
             descricaoLog = `Revisou/salvou a despesa "${despesaAntiga.fornecedor}" (ID: ${id}) sem alterações significativas`;
         }
-
         const usuarioIdLog = (req as RequestComUsuario).usuario.id;
         await registrarLog(descricaoLog, usuarioIdLog, id);
 
-        // LÓGICA DE CRIAÇÃO AUTOMÁTICA DA PRÓXIMA FATURA RECORRENTE
+        // Lógica de Negócio (após pagamento)
         const foiPagaAgora = despesaAntiga.status === 'Pendente' && dadosAtualizados.status === 'Pago';
-        const ehRecorrente = dadosAtualizados.periodicidade === 'Mensal' || dadosAtualizados.periodicidade === 'Anual';
-
-        if (foiPagaAgora && ehRecorrente) {
-            const proximaData = new Date(dadosAtualizados.vencimento + 'T03:00:00');
-            if (dadosAtualizados.periodicidade === 'Mensal') {
-                proximaData.setMonth(proximaData.getMonth() + 1);
-            } else { // Anual
-                proximaData.setFullYear(proximaData.getFullYear() + 1);
+        
+        if (foiPagaAgora) {
+            // Lógica de Notificação de Valor Fixo
+            if (despesaAntiga.tem_valor_fixo && parseFloat(despesaAntiga.valor_fixo) !== parseFloat(dadosAtualizados.valor)) {
+                const sqlUsuarios = "SELECT email, nome FROM usuarios WHERE papel IN ('editor', 'mestre')";
+                const destinatarios = await conn.query(sqlUsuarios);
+                if (destinatarios.length > 0) {
+                    const listaEmails = destinatarios.map((user: { email: string }) => user.email);
+                    const htmlEmail = `
+                        <h1>Alerta de Alteração de Valor Fixo</h1>
+                        <p>Olá,</p>
+                        <p>A despesa <strong>"${dadosAtualizados.fornecedor}"</strong> foi marcada como paga com um valor diferente do valor fixo registrado.</p>
+                        <ul>
+                            <li>Valor Fixo Esperado: <strong>${Number(despesaAntiga.valor_fixo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></li>
+                            <li>Valor Efetivamente Pago: <strong>${Number(dadosAtualizados.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></li>
+                        </ul>
+                        <p>A alteração foi realizada pelo usuário: <strong>${(req as RequestComUsuario).usuario.nome}</strong>.</p>
+                        <p>Esta é uma notificação automática para fins de auditoria.</p>
+                    `;
+                    await transporter.sendMail({
+                        from: `"Controle de Despesas" <${process.env.EMAIL_USER}>`,
+                        bcc: listaEmails.join(','),
+                        subject: `Alerta: Valor da despesa "${dadosAtualizados.fornecedor}" foi alterado`,
+                        html: htmlEmail,
+                    });
+                    console.log('E-mail de alerta de valor fixo enviado com sucesso.');
+                }
             }
-            const proximoVencimento = proximaData.toISOString().split('T')[0];
-            const sqlInsertProxima = `
-                INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-            const paramsInsertProxima = [
-                dadosAtualizados.fornecedor, dadosAtualizados.valor, proximoVencimento, dadosAtualizados.categoria, dadosAtualizados.periodicidade,
-                '', 'Pendente', 'Pendente', 'Pendente'
-            ];
-            await conn.query(sqlInsertProxima, paramsInsertProxima);
-            console.log('Próxima fatura recorrente criada com sucesso!');
+
+            // Lógica de Criação de Próxima Fatura Recorrente
+            const ehRecorrente = despesaAntiga.periodicidade === 'Mensal' || despesaAntiga.periodicidade === 'Anual';
+            if (ehRecorrente) {
+                const proximaData = new Date(dadosAtualizados.vencimento + 'T03:00:00');
+                if (dadosAtualizados.periodicidade === 'Mensal') {
+                    proximaData.setMonth(proximaData.getMonth() + 1);
+                } else { // Anual
+                    proximaData.setFullYear(proximaData.getFullYear() + 1);
+                }
+                const proximoVencimento = proximaData.toISOString().split('T')[0];
+                const fornecedorBase = despesaAntiga.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim();
+                
+                const sqlInsertProxima = `
+                    INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, tem_valor_fixo, valor_fixo) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+                const paramsInsertProxima = [
+                    fornecedorBase,
+                    despesaAntiga.valor,
+                    proximoVencimento, despesaAntiga.categoria, despesaAntiga.periodicidade,
+                    '', 'Pendente', 'Pendente', 'Pendente',
+                    despesaAntiga.tem_valor_fixo, despesaAntiga.valor_fixo
+                ];
+                await conn.query(sqlInsertProxima, paramsInsertProxima);
+                console.log('Próxima fatura recorrente criada com sucesso!');
+            }
         }
-
         res.status(200).json({ id: parseInt(id), ...dadosAtualizados });
-
     } catch (err) {
         console.error("Erro ao atualizar despesa:", err);
         res.status(500).json({ error: 'Erro ao atualizar despesa no banco de dados.' });

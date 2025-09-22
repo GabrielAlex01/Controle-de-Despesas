@@ -13,6 +13,24 @@
 <body>
 
     <div id="login-container">
+
+        <div id="modal-forgot-password-container" class="modal-container">
+            <div class="modal">
+                <h3>Redefinir Senha</h3>
+                <p>Por favor, insira seu e-mail para receber um link de redefinição.</p>
+                <form id="form-forgot-password">
+                    <div class="form-group">
+                        <label for="forgot-email">E-mail</label>
+                        <input type="email" id="forgot-email" required>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" id="btn-forgot-cancelar">Cancelar</button>
+                        <button type="submit">Enviar Link</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="login-box">
             <h2>Acessar o Sistema</h2>
             <form id="form-login">
@@ -25,6 +43,7 @@
                     <input type="password" id="login-senha" required>
                 </div>
                 <button type="submit" class="btn-login">Entrar</button>
+                <a href="#" id="forgot-password-link" style="display: block; margin-top: 15px;">Esqueci minha senha</a>
             </form>
         </div>
     </div>
@@ -223,6 +242,16 @@
                         <input type="number" id="valor" step="0.01" required>
                     </div>
 
+                    <div class="form-group-checkbox">
+                        <input type="checkbox" id="tem-valor-fixo">
+                        <label for="tem-valor-fixo">Esta despesa tem um valor fixo?</label>
+                    </div>
+
+                    <div class="form-group" id="container-valor-fixo" style="display: none;">
+                        <label for="valor-fixo">Valor Fixo (R$)</label>
+                        <input type="number" id="valor-fixo" step="0.01">
+                    </div>
+
                     <div class="form-group">
                         <label for="vencimento">Vencimento</label>
                         <input type="date" id="vencimento" required>
@@ -383,6 +412,31 @@
                     <button type="button" id="btn-excluir-usuario-cancelar">Cancelar</button>
                     <button type="button" id="btn-excluir-usuario-confirmar" class="btn-perigo">Confirmar
                         Exclusão</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-relatorio-container" class="modal-container">
+            <div class="modal" style="max-width: 800px;">
+                <h3 id="relatorio-titulo">Relatório de Despesa</h3>
+                <div id="relatorio-grafico-container" style="margin-bottom: 20px;">
+                    <canvas id="grafico-relatorio-despesa"></canvas>
+                </div>
+                <h4>Histórico de Pagamentos</h4>
+                <div class="table-container" style="max-height: 200px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Vencimento</th>
+                                <th>Valor Pago</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-relatorio-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-buttons">
+                    <button type="button" id="btn-relatorio-fechar">Fechar</button>
                 </div>
             </div>
         </div>

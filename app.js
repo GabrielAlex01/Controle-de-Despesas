@@ -9,9 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+console.log("app.ts foi carregado e está sendo executado.");
 // --- Constantes Globais ---
 const API_BASE_URL = 'http://localhost:3000/api';
 let meuGrafico = null;
+let graficoRelatorio = null;
 let despesas = [];
 let idEmEdicao = null;
 let idParaExcluir = null;
@@ -90,6 +92,21 @@ const logsPaginacaoContainer = document.getElementById('logs-paginacao-container
 const btnLogsAnterior = document.getElementById('btn-logs-anterior');
 const btnLogsProximo = document.getElementById('btn-logs-proximo');
 const logsPaginacaoInfo = document.getElementById('logs-paginacao-info');
+const forgotPasswordLink = document.getElementById('forgot-password-link');
+console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink); // <-- Adicionar aqui
+const modalForgotPasswordContainer = document.getElementById('modal-forgot-password-container');
+console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer); // <-- E aqui
+const formForgotPassword = document.getElementById('form-forgot-password');
+const forgotEmailInput = document.getElementById('forgot-email');
+const btnForgotCancelar = document.getElementById('btn-forgot-cancelar');
+const modalRelatorioContainer = document.getElementById('modal-relatorio-container');
+const relatorioTitulo = document.getElementById('relatorio-titulo');
+const graficoRelatorioCanvas = document.getElementById('grafico-relatorio-despesa');
+const tabelaRelatorioBody = document.getElementById('tabela-relatorio-body');
+const btnRelatorioFechar = document.getElementById('btn-relatorio-fechar');
+const temValorFixoCheckbox = document.getElementById('tem-valor-fixo');
+const containerValorFixo = document.getElementById('container-valor-fixo');
+const valorFixoInput = document.getElementById('valor-fixo');
 // Seções principais da tela de despesas
 const secoesPrincipais = [
     document.getElementById('resumo-container'),
@@ -99,6 +116,60 @@ const secoesPrincipais = [
     document.getElementById('despesas-extras'),
     document.getElementById('grafico-container')
 ];
+// Função para buscar os dados do relatório no back-end
+function fetchRelatorioData(fornecedor) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            // encodeURIComponent trata espaços e caracteres especiais no nome do fornecedor para a URL
+            const response = yield fetchComToken(`${API_BASE_URL}/despesas/relatorio/${encodeURIComponent(fornecedor)}`);
+            if (!response.ok)
+                throw new Error('Falha ao buscar dados do relatório.');
+            return yield response.json();
+        }
+        catch (error) {
+            console.error(error);
+            alert('Não foi possível carregar os dados do relatório.');
+            return [];
+        }
+    });
+}
+// Função para renderizar o gráfico e a tabela no modal
+function renderizarRelatorio(fornecedor, dados) {
+    relatorioTitulo.innerText = `Relatório de: ${fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim()}`;
+    // Prepara os dados para o gráfico
+    const labels = dados.map(d => new Date(d.vencimento).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' }));
+    const valores = dados.map(d => parseFloat(d.valor));
+    // Renderiza o gráfico
+    const ctx = graficoRelatorioCanvas.getContext('2d');
+    if (!ctx)
+        return;
+    if (graficoRelatorio)
+        graficoRelatorio.destroy(); // Destrói o gráfico anterior
+    graficoRelatorio = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                    label: 'Valor (R$)',
+                    data: valores,
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+    // Preenche a tabela de histórico
+    tabelaRelatorioBody.innerHTML = '';
+    dados.forEach(d => {
+        const tr = document.createElement('tr');
+        const dataFormatada = new Date(d.vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        const valorFormatado = Number(d.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        tr.innerHTML = `<td>${dataFormatada}</td><td>${valorFormatado}</td>`;
+        tabelaRelatorioBody.appendChild(tr);
+    });
+}
 // --- LÓGICA DE CONTROLE DE UI (LOGIN/APP) ---
 function mostrarTelaLogin() {
     loginContainer.style.display = 'flex';
@@ -295,6 +366,21 @@ function carregarLogsDoBackend() {
 function handleFormSubmit(event) {
     return __awaiter(this, void 0, void 0, function* () {
         event.preventDefault();
+        if (idEmEdicao !== null && statusInput.value === 'Pago') {
+            const despesaOriginal = despesas.find(d => d.id === idEmEdicao);
+            if (despesaOriginal && despesaOriginal.tem_valor_fixo) {
+                const valorPago = valorInput.valueAsNumber;
+                const valorFixo = Number(despesaOriginal.valor_fixo);
+                if (valorPago !== valorFixo) {
+                    const confirmou = confirm('ATENÇÃO: O valor pago (R$ ' + valorPago.toFixed(2) +
+                        ') é diferente do valor fixo cadastrado (R$ ' + valorFixo.toFixed(2) +
+                        ').\n\nDeseja continuar? Uma notificação será enviada aos administradores.');
+                    if (!confirmou) {
+                        return; // Cancela o envio do formulário
+                    }
+                }
+            }
+        }
         const dadosForm = {
             fornecedor: fornecedorInput.value,
             valor: valorInput.valueAsNumber,
@@ -305,6 +391,9 @@ function handleFormSubmit(event) {
             situacaoFinanceiro: situacaoFinanceiroInput.value,
             situacaoFiscal: situacaoFiscalInput.value,
             status: statusInput.value,
+            // --- Adiciona os novos campos ---
+            tem_valor_fixo: temValorFixoCheckbox.checked,
+            valor_fixo: temValorFixoCheckbox.checked ? valorFixoInput.valueAsNumber : null
         };
         if (dadosForm.periodicidade === 'Parcelada') {
             dadosForm.numero_parcelas = parseInt(numeroParcelasInput.value, 10);
@@ -336,8 +425,10 @@ function handleFormSubmit(event) {
             alert(`Não foi possível salvar a despesa: ${error.message}`);
         }
     });
-} // Função para abrir o modal de nova despesa ou edição
+}
+// Função para abrir o modal de nova despesa ou edição
 function abrirModal(paraEditar = false, despesa) {
+    var _a;
     modalTitulo.innerText = paraEditar ? 'Editar Despesa' : 'Nova Despesa';
     formDespesa.reset();
     if (paraEditar && despesa) {
@@ -351,6 +442,16 @@ function abrirModal(paraEditar = false, despesa) {
         situacaoFinanceiroInput.value = despesa.situacaoFinanceiro;
         situacaoFiscalInput.value = despesa.situacaoFiscal;
         statusInput.value = despesa.status;
+        temValorFixoCheckbox.checked = despesa.tem_valor_fixo || false;
+        if (temValorFixoCheckbox.checked) {
+            containerValorFixo.style.display = 'block';
+            valorFixoInput.required = true;
+            valorFixoInput.value = ((_a = despesa.valor_fixo) === null || _a === void 0 ? void 0 : _a.toString()) || '';
+        }
+        else {
+            containerValorFixo.style.display = 'none';
+            valorFixoInput.required = false;
+        }
         const regexParcela = /\(Parcela \d+\/(\d+)\)/;
         const match = despesa.fornecedor.match(regexParcela);
         if (match) {
@@ -437,6 +538,16 @@ function renderizarTabelas() {
         const tr = document.createElement('tr');
         tr.className = `status-${((_a = despesa.status) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || 'pendente'}`;
         tr.dataset.id = despesa.id.toString();
+        let botoesAcaoHtml = ''; // Começa sem botões
+        if (usuarioLogado && (usuarioLogado.papel === 'editor' || usuarioLogado.papel === 'mestre')) {
+            botoesAcaoHtml = `
+        <button class="btn-editar">Editar</button>
+        <button class="btn-excluir">Excluir</button>
+        <button class="btn-relatorio">Relatório</button> `;
+        }
+        else {
+            botoesAcaoHtml = `<button class="btn-relatorio">Relatório</button>`; // Visualizador só vê o relatório
+        }
         const valorFormatado = Number(despesa.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const dataFormatada = new Date(despesa.vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
         tr.innerHTML = `
@@ -448,8 +559,7 @@ function renderizarTabelas() {
             <td>${despesa.situacaoFinanceiro}</td>
             <td>${despesa.situacaoFiscal}</td>
             <td>
-                <button class="btn-editar">Editar</button>
-                <button class="btn-excluir">Excluir</button>
+                ${botoesAcaoHtml}
             </td>
         `;
         switch (despesa.categoria) {
@@ -559,20 +669,29 @@ formRegistrar.addEventListener('submit', (event) => __awaiter(void 0, void 0, vo
     }
 }));
 function handleTabelasClick(event) {
-    const target = event.target;
-    const tr = target.closest('tr');
-    if (!tr || !tr.dataset.id)
-        return;
-    const id = parseInt(tr.dataset.id, 10);
-    const despesa = despesas.find(d => d.id === id);
-    if (!despesa)
-        return;
-    if (target.classList.contains('btn-editar')) {
-        abrirModal(true, despesa);
-    }
-    if (target.classList.contains('btn-excluir')) {
-        excluirDespesa(id);
-    }
+    return __awaiter(this, void 0, void 0, function* () {
+        const target = event.target;
+        const tr = target.closest('tr');
+        if (!tr || !tr.dataset.id)
+            return;
+        const id = parseInt(tr.dataset.id, 10);
+        const despesa = despesas.find(d => d.id === id);
+        if (!despesa)
+            return;
+        if (target.classList.contains('btn-editar')) {
+            abrirModal(true, despesa);
+        }
+        else if (target.classList.contains('btn-excluir')) {
+            excluirDespesa(id);
+        }
+        else if (target.classList.contains('btn-relatorio')) { // --- LÓGICA NOVA ---
+            modalRelatorioContainer.classList.add('active');
+            // Mostra um "carregando" enquanto busca os dados
+            tabelaRelatorioBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
+            const dadosRelatorio = yield fetchRelatorioData(despesa.fornecedor);
+            renderizarRelatorio(despesa.fornecedor, dadosRelatorio);
+        }
+    });
 }
 tabelaComercialBody.addEventListener('click', handleTabelasClick);
 tabelaServicosBody.addEventListener('click', handleTabelasClick);
@@ -740,4 +859,53 @@ btnLogsAnterior.addEventListener('click', () => {
 btnLogsProximo.addEventListener('click', () => {
     // A lógica de desabilitar o botão já previne isso, mas é uma segurança extra
     carregarLogsDoBackend(logsPaginaAtual + 1);
+});
+// Abre o modal de "esqueci a senha"
+console.log("Adicionando listener de clique ao link..."); // <-- Adicionar aqui
+forgotPasswordLink.addEventListener('click', (e) => {
+    console.log("LINK FOI CLICADO!"); // <-- Adicionar aqui
+    e.preventDefault();
+    modalForgotPasswordContainer.classList.add('active');
+});
+// Fecha o modal
+btnForgotCancelar.addEventListener('click', () => {
+    modalForgotPasswordContainer.classList.remove('active');
+});
+// Envia o e-mail de redefinição
+formForgotPassword.addEventListener('submit', (e) => __awaiter(void 0, void 0, void 0, function* () {
+    e.preventDefault();
+    const email = forgotEmailInput.value;
+    try {
+        const response = yield fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        if (!response.ok) {
+            // Se a resposta não for OK (ex: erro 500), lança um erro para o catch.
+            throw new Error('O servidor retornou um erro. Tente novamente mais tarde.');
+        }
+        const data = yield response.json();
+        // Mostramos a mesma mensagem sempre, por segurança
+        alert(data.message);
+        modalForgotPasswordContainer.classList.remove('active');
+        formForgotPassword.reset();
+    }
+    catch (error) {
+        console.error('Erro ao solicitar redefinição:', error);
+        alert('Ocorreu um erro. Tente novamente.');
+    }
+}));
+btnRelatorioFechar.addEventListener('click', () => {
+    modalRelatorioContainer.classList.remove('active');
+});
+temValorFixoCheckbox.addEventListener('change', () => {
+    if (temValorFixoCheckbox.checked) {
+        containerValorFixo.style.display = 'block';
+        valorFixoInput.required = true;
+    }
+    else {
+        containerValorFixo.style.display = 'none';
+        valorFixoInput.required = false;
+    }
 });
