@@ -22,8 +22,11 @@ A aplicação permite o controle detalhado de despesas fixas, serviços e gastos
     * `editor`: Controle total sobre despesas.
     * `visualizador`: Apenas visualização das despesas.
 * **Gerenciamento de Usuários:** Painel administrativo para o "Mestre" criar, excluir e alterar o papel de outros usuários.
-* **Auditoria e Logs:** Registro automático de alterações importantes realizadas nas despesas, com informação de qual usuário realizou a ação e quando.
+* **Recuperação de Senha Segura:** Fluxo completo de "esqueci a senha" com tokens de uso único e tempo de expiração enviados por e-mail.
+* **Relatórios Individuais de Despesas:** Análise de tendência histórica para cada despesa, com gráfico de evolução de valores pagos ao longo do tempo.
+* **Auditoria e Logs:** Registro detalhado de todas as ações importantes (criação, alteração, exclusão) com informação de qual usuário realizou a ação, quando, e o que foi alterado.
 * **Notificações por E-mail:** Serviço automatizado que verifica diariamente as contas a vencer e envia e-mails de alerta para os usuários responsáveis.
+* Notificações instantâneas para administradores sobre alterações em despesas de valor fixo.
 
 ## 🛡️ Foco em Cibersegurança
 
@@ -31,6 +34,7 @@ A segurança foi um pilar central no desenvolvimento da aplicação. As seguinte
 
 * **Gerenciamento de Segredos com Variáveis de Ambiente (`.env`):** Credenciais críticas (senha do banco, segredo JWT, credenciais de e-mail) são mantidas fora do código-fonte, em um arquivo `.env` local. Este arquivo é excluído do controle de versão (`.gitignore`), garantindo que segredos nunca sejam expostos em repositórios de código.
 * **Criptografia de Senhas com `bcrypt`:** As senhas dos usuários nunca são armazenadas em texto puro. Utilizamos o algoritmo `bcrypt`, o padrão da indústria, para gerar um *hash* seguro e com "sal" de cada senha, que é o que fica armazenado no banco de dados. A verificação no login é feita comparando o hash da senha fornecida com o hash armazenado, sem nunca expor a senha original.
+* Tokens Seguros para Redefinição de Senha: O sistema de "esqueci a senha" utiliza tokens criptograficamente seguros (crypto), de uso único e com tempo de expiração, para validar a identidade do usuário antes de permitir a alteração da senha.
 * **Autenticação via Token JWT (JSON Web Token):** Após o login, o usuário recebe um token JWT assinado digitalmente com o segredo do servidor. Para cada requisição a endpoints protegidos, este token deve ser enviado, provando a identidade do usuário.
 * **Middlewares de Segurança em Camadas:** O acesso aos endpoints da API é controlado por uma cadeia de middlewares que funcionam como "porteiros" sequenciais:
     1.  **`verificarToken` (Autenticação):** O primeiro porteiro verifica se um token JWT válido foi enviado no cabeçalho da requisição. Se o token não existir, for inválido ou tiver expirado, o acesso é imediatamente bloqueado.
@@ -43,7 +47,7 @@ A segurança foi um pilar central no desenvolvimento da aplicação. As seguinte
 * **Front-end:** HTML5, CSS3, TypeScript
 * **Back-end:** Node.js, Express.js, TypeScript
 * **Banco de Dados:** MariaDB
-* **Segurança:** JSON Web Token (JWT), bcrypt e Middleware
+* **Segurança:** JSON Web Token (JWT), bcrypt, crypto, Middlewares de autorização
 * **Automação de E-mails:** Nodemailer, node-cron
 
 ## 🚀 Tutorial de Instalação e Execução
@@ -125,47 +129,48 @@ CREATE DATABASE controle_despesas;
 USE controle_despesas;
 
 -- Criação da Tabela de Usuários
-CREATE TABLE usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    senha_hash VARCHAR(255) NOT NULL,
-    papel ENUM('mestre', 'editor', 'visualizador') NOT NULL DEFAULT 'visualizador',
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE `usuarios` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `senha_hash` varchar(255) NOT NULL,
+  `papel` enum('mestre','editor','visualizador') DEFAULT 'visualizador',
+  `criado_em` timestamp NULL DEFAULT current_timestamp(),
+  `reset_token` varchar(255) DEFAULT NULL,
+  `reset_token_expires` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Criação da Tabela de Despesas
-CREATE TABLE despesas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    fornecedor VARCHAR(255) NOT NULL,
-    valor DECIMAL(10, 2) NOT NULL,
-    vencimento DATE NOT NULL,
-    categoria ENUM('comercial', 'servicos', 'despesas-extras') NOT NULL,
-    periodicidade ENUM('Unica', 'Mensal', 'Anual', 'Parcelada') NOT NULL,
-    notaFiscal VARCHAR(255),
-    situacaoFinanceiro ENUM('Pendente', 'Entregue') NOT NULL DEFAULT 'Pendente',
-    situacaoFiscal ENUM('Pendente', 'Entregue') NOT NULL DEFAULT 'Pendente',
-    status ENUM('Pendente', 'Pago') NOT NULL DEFAULT 'Pendente',
-    total_parcelas INT NULL DEFAULT NULL,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+CREATE TABLE `despesas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `fornecedor` varchar(255) DEFAULT NULL,
+  `valor` decimal(10,2) DEFAULT NULL,
+  `vencimento` date DEFAULT NULL,
+  `categoria` enum('comercial','servicos','despesas-extras') DEFAULT NULL,
+  `periodicidade` enum('Unica','Mensal','Anual','Parcelada') DEFAULT NULL,
+  `notaFiscal` varchar(255) DEFAULT NULL,
+  `situacaoFinanceiro` enum('Pendente','Entregue') DEFAULT 'Pendente',
+  `situacaoFiscal` enum('Pendente','Entregue') DEFAULT 'Pendente',
+  `status` enum('Pendente','Pago') DEFAULT 'Pendente',
+  `criado_em` timestamp NULL DEFAULT current_timestamp(),
+  `atualizado_em` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `total_parcelas` int(11) DEFAULT NULL,
+  `tem_valor_fixo` tinyint(1) DEFAULT 0,
+  `valor_fixo` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Criação da Tabela de Logs
-CREATE TABLE logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    descricao TEXT NOT NULL,
-    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    usuario_id INT,
-    despesa_id INT,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-    FOREIGN KEY (despesa_id) REFERENCES despesas(id) ON DELETE SET NULL
-);
-
--- Execute este comando
-
-GRANT USAGE ON *.* TO 'root'@'localhost' IDENTIFIED BY 'SUA_SENHA_AQUI';
-FLUSH PRIVILEGES;
+CREATE TABLE `logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `descricao` text DEFAULT NULL,
+  `data_hora` timestamp NULL DEFAULT current_timestamp(),
+  `usuario_id` int(11) DEFAULT NULL,
+  `despesa_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Crie o primeiro usuário Mestre manualmente para iniciar o sistema
 -- Lembre-se de usar uma senha forte e gerar o hash dela para inserir aqui.
