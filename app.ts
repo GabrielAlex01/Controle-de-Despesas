@@ -435,6 +435,8 @@ async function handleFormSubmit(event: SubmitEvent) {
     }
 
     try {
+        fecharModal();
+        
         let response;
         if (idEmEdicao !== null) {
             response = await fetchComToken(`${API_BASE_URL}/despesas/${idEmEdicao}`, {
@@ -451,7 +453,7 @@ async function handleFormSubmit(event: SubmitEvent) {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Falha ao salvar despesa.');
         }
-        fecharModal();
+
         await carregarDespesasDoBackend();
     } catch (error: any) {
         console.error('Erro ao salvar despesa:', error);

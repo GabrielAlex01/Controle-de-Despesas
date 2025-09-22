@@ -399,6 +399,7 @@ function handleFormSubmit(event) {
             dadosForm.total_parcelas = parseInt(numeroParcelasInput.value, 10);
         }
         try {
+            fecharModal();
             let response;
             if (idEmEdicao !== null) {
                 response = yield fetchComToken(`${API_BASE_URL}/despesas/${idEmEdicao}`, {
@@ -416,7 +417,6 @@ function handleFormSubmit(event) {
                 const errorData = yield response.json();
                 throw new Error(errorData.error || 'Falha ao salvar despesa.');
             }
-            fecharModal();
             yield carregarDespesasDoBackend();
         }
         catch (error) {
