@@ -22,8 +22,11 @@ A aplicação permite o controle detalhado de despesas fixas, serviços e gastos
     * `editor`: Controle total sobre despesas.
     * `visualizador`: Apenas visualização das despesas.
 * **Gerenciamento de Usuários:** Painel administrativo para o "Mestre" criar, excluir e alterar o papel de outros usuários.
-* **Auditoria e Logs:** Registro automático de alterações importantes realizadas nas despesas, com informação de qual usuário realizou a ação e quando.
+* **Recuperação de Senha Segura:** Fluxo completo de "esqueci a senha" com tokens de uso único e tempo de expiração enviados por e-mail.
+* **Relatórios Individuais de Despesas:** Análise de tendência histórica para cada despesa, com gráfico de evolução de valores pagos ao longo do tempo.
+* **Auditoria e Logs:** Registro detalhado de todas as ações importantes (criação, alteração, exclusão) com informação de qual usuário realizou a ação, quando, e o que foi alterado.
 * **Notificações por E-mail:** Serviço automatizado que verifica diariamente as contas a vencer e envia e-mails de alerta para os usuários responsáveis.
+* Notificações instantâneas para administradores sobre alterações em despesas de valor fixo.
 
 ## 🛡️ Foco em Cibersegurança
 
