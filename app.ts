@@ -396,23 +396,6 @@ async function carregarLogsDoBackend(pagina = 1) {
 // LÓGICA DE FORMULÁRIOS E MODAIS
 async function handleFormSubmit(event: SubmitEvent) {
     event.preventDefault();
-    if (idEmEdicao !== null && statusInput.value === 'Pago') {
-        const despesaOriginal = despesas.find(d => d.id === idEmEdicao);
-        if (despesaOriginal && despesaOriginal.tem_valor_fixo) {
-            const valorPago = valorInput.valueAsNumber;
-            const valorFixo = Number(despesaOriginal.valor_fixo);
-            if (valorPago !== valorFixo) {
-                const confirmou = confirm(
-                    'ATENÇÃO: O valor pago (R$ ' + valorPago.toFixed(2) +
-                    ') é diferente do valor fixo cadastrado (R$ ' + valorFixo.toFixed(2) +
-                    ').\n\nDeseja continuar? Uma notificação será enviada aos administradores.'
-                );
-                if (!confirmou) {
-                    return; // Cancela o envio do formulário
-                }
-            }
-        }
-    }
 
     const dadosForm: any = {
         fornecedor: fornecedorInput.value,
@@ -424,7 +407,6 @@ async function handleFormSubmit(event: SubmitEvent) {
         situacaoFinanceiro: situacaoFinanceiroInput.value,
         situacaoFiscal: situacaoFiscalInput.value,
         status: statusInput.value,
-        // Adiciona os novos campos 
         tem_valor_fixo: temValorFixoCheckbox.checked,
         valor_fixo: temValorFixoCheckbox.checked ? valorFixoInput.valueAsNumber : null
     };
@@ -433,13 +415,34 @@ async function handleFormSubmit(event: SubmitEvent) {
         dadosForm.numero_parcelas = parseInt(numeroParcelasInput.value, 10);
         dadosForm.total_parcelas = parseInt(numeroParcelasInput.value, 10);
     }
+    
+    // CAPTURAMOS O ID DE EDIÇÃO NUMA VARIÁVEL LOCAL
+    const idParaSalvar = idEmEdicao;
 
+    // Lógica de confirmação de valor fixo
+    if (idParaSalvar !== null && statusInput.value === 'Pago') {
+        const despesaOriginal = despesas.find(d => d.id === idParaSalvar);
+        if (despesaOriginal && despesaOriginal.tem_valor_fixo) {
+            const valorPago = dadosForm.valor;
+            const valorFixo = Number(despesaOriginal.valor_fixo);
+            if (valorPago !== valorFixo) {
+                const confirmou = confirm(
+                    'ATENÇÃO: O valor pago (R$ ' + valorPago.toFixed(2) +
+                    ') é diferente do valor fixo cadastrado (R$ ' + valorFixo.toFixed(2) +
+                    ').\n\nDeseja continuar? Uma notificação será enviada aos administradores.'
+                );
+                if (!confirmou) {
+                    return; 
+                }
+            }
+        }
+    }
+    
     try {
         fecharModal();
-        
         let response;
-        if (idEmEdicao !== null) {
-            response = await fetchComToken(`${API_BASE_URL}/despesas/${idEmEdicao}`, {
+        if (idParaSalvar !== null) {
+            response = await fetchComToken(`${API_BASE_URL}/despesas/${idParaSalvar}`, {
                 method: 'PUT',
                 body: JSON.stringify(dadosForm),
             });
@@ -454,12 +457,15 @@ async function handleFormSubmit(event: SubmitEvent) {
             throw new Error(errorData.error || 'Falha ao salvar despesa.');
         }
 
+        // A atualização da tabela acontece em segundo plano, após o sucesso.
         await carregarDespesasDoBackend();
+
     } catch (error: any) {
         console.error('Erro ao salvar despesa:', error);
         alert(`Não foi possível salvar a despesa: ${error.message}`);
     }
 }
+
 // Função para abrir o modal de nova despesa ou edição
 function abrirModal(paraEditar = false, despesa?: Despesa) {
     modalTitulo.innerText = paraEditar ? 'Editar Despesa' : 'Nova Despesa';
