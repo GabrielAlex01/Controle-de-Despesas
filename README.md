@@ -194,6 +194,7 @@ FLUSH PRIVILEGES;
 INSERT INTO usuarios (nome, email, senha_hash, papel) VALUES ('Admin', 'admin@empresa.com', 'seu_hash_bcrypt_aqui', 'mestre');
 ```
 
+
 ### 🐧 Tutorial de Instalação e Execução Localmente no Linux
 
 ### Passo 1: Instalação das Ferramentas Essenciais
@@ -240,37 +241,37 @@ Acesse o MariaDB com o usuário `root` :
     ```bash
        sudo mariadb
     ```
-Dentro do console do MariaDB, cole o bloco de código abaixo inteiro e pressione Enter. Ele criará o banco de dados e todas as tabelas.
-```sql
-      CREATE DATABASE IF NOT EXISTS controle_despesas;
-      USE controle_despesas;
+   Dentro do console do MariaDB, cole o bloco de código abaixo inteiro e pressione Enter. Ele criará o banco de dados e todas as tabelas.
+   ```sql
+         CREATE DATABASE IF NOT EXISTS controle_despesas;
+         USE controle_despesas;
 
-      CREATE TABLE `usuarios` (
-        `id` int(11) NOT NULL AUTO_INCREMENT, `nome` varchar(255) NOT NULL, `email` varchar(255) NOT NULL,
-        `senha_hash` varchar(255) NOT NULL, `papel` enum('mestre','editor','visualizador') DEFAULT 'visualizador',
-        `criado_em` timestamp NULL DEFAULT current_timestamp(), `reset_token` varchar(255) DEFAULT NULL,
-        `reset_token_expires` datetime DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `email` (`email`)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+         CREATE TABLE `usuarios` (
+           `id` int(11) NOT NULL AUTO_INCREMENT, `nome` varchar(255) NOT NULL, `email` varchar(255) NOT NULL,
+           `senha_hash` varchar(255) NOT NULL, `papel` enum('mestre','editor','visualizador') DEFAULT 'visualizador',
+           `criado_em` timestamp NULL DEFAULT current_timestamp(), `reset_token` varchar(255) DEFAULT NULL,
+           `reset_token_expires` datetime DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `email` (`email`)
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-      CREATE TABLE `despesas` (
-        `id` int(11) NOT NULL AUTO_INCREMENT, `fornecedor` varchar(255) DEFAULT NULL, `valor` decimal(10,2) DEFAULT NULL,
-        `vencimento` date DEFAULT NULL, `categoria` enum('comercial','servicos','despesas-extras') DEFAULT NULL,
-        `periodicidade` enum('Unica','Mensal','Anual','Parcelada') DEFAULT NULL, `notaFiscal` varchar(255) DEFAULT NULL,
-        `situacaoFinanceiro` enum('Pendente','Entregue') DEFAULT 'Pendente', `situacaoFiscal` enum('Pendente','Entregue') DEFAULT 'Pendente',
-        `status` enum('Pendente','Pago') DEFAULT 'Pendente', `criado_em` timestamp NULL DEFAULT current_timestamp(),
-        `atualizado_em` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(), `total_parcelas` int(11) DEFAULT NULL,
-        `tem_valor_fixo` tinyint(1) DEFAULT 0, `valor_fixo` decimal(10,2) DEFAULT NULL, PRIMARY KEY (`id`)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+         CREATE TABLE `despesas` (
+           `id` int(11) NOT NULL AUTO_INCREMENT, `fornecedor` varchar(255) DEFAULT NULL, `valor` decimal(10,2) DEFAULT NULL,
+           `vencimento` date DEFAULT NULL, `categoria` enum('comercial','servicos','despesas-extras') DEFAULT NULL,
+           `periodicidade` enum('Unica','Mensal','Anual','Parcelada') DEFAULT NULL, `notaFiscal` varchar(255) DEFAULT NULL,
+           `situacaoFinanceiro` enum('Pendente','Entregue') DEFAULT 'Pendente', `situacaoFiscal` enum('Pendente','Entregue') DEFAULT 'Pendente',
+           `status` enum('Pendente','Pago') DEFAULT 'Pendente', `criado_em` timestamp NULL DEFAULT current_timestamp(),
+           `atualizado_em` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(), `total_parcelas` int(11) DEFAULT NULL,
+           `tem_valor_fixo` tinyint(1) DEFAULT 0, `valor_fixo` decimal(10,2) DEFAULT NULL, PRIMARY KEY (`id`)
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-      CREATE TABLE `logs` (
-        `id` int(11) NOT NULL AUTO_INCREMENT, `descricao` text DEFAULT NULL, `data_hora` timestamp NULL DEFAULT current_timestamp(),
-        `usuario_id` int(11) DEFAULT NULL, `despesa_id` int(11) DEFAULT NULL, PRIMARY KEY (`id`),
-        KEY `idx_logs_usuario_id` (`usuario_id`), KEY `idx_logs_despesa_id` (`despesa_id`),
-        CONSTRAINT `fk_logs_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+         CREATE TABLE `logs` (
+           `id` int(11) NOT NULL AUTO_INCREMENT, `descricao` text DEFAULT NULL, `data_hora` timestamp NULL DEFAULT current_timestamp(),
+           `usuario_id` int(11) DEFAULT NULL, `despesa_id` int(11) DEFAULT NULL, PRIMARY KEY (`id`),
+           KEY `idx_logs_usuario_id` (`usuario_id`), KEY `idx_logs_despesa_id` (`despesa_id`),
+           CONSTRAINT `fk_logs_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-      EXIT;
-```
+         EXIT;
+   ```
     
 ### Passo 3: Clonar e Configurar a Aplicação
 
@@ -295,11 +296,11 @@ Dentro do console do MariaDB, cole o bloco de código abaixo inteiro e pressione
     ```
     
 Dentro do editor nano, cole o conteúdo abaixo e preencha com seus dados (a senha do root que você definiu, suas credenciais do Gmail, etc.).
-    ```bash
-      DB_PASSWORD="a_senha_do_root_que_voce_criou"
-      JWT_SECRET="crie_uma_chave_longa_e_aleatoria_aqui"
-      EMAIL_USER="seu_email_de_envio@gmail.com"
-      EMAIL_PASS="sua_senha_de_app_de_16_letras_do_gmail"
+    ```env
+    DB_PASSWORD="a_senha_que_voce_criou_para_o_mariadb"
+    JWT_SECRET="crie_uma_chave_longa_e_aleatoria_aqui"
+    EMAIL_USER="seu_email_de_envio@gmail.com"
+    EMAIL_PASS="sua_senha_de_app_de_16_letras_do_gmail"
     ```
 Pressione Ctrl+X, depois Y e Enter para salvar e sair.
 
