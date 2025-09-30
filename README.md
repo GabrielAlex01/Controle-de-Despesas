@@ -28,7 +28,6 @@ A aplicação permite o controle detalhado de despesas fixas, serviços e gastos
 * **Notificações por E-mail:** 
     * Serviço automatizado que verifica diariamente as contas a vencer e envia e-mails de alerta para os usuários responsáveis.
     * Notificações instantâneas para administradores sobre alterações em despesas de valor fixo.
-* **Prevenção de Ataques de Força Bruta e DDoS com Rate Limiting:** Utilizando a biblioteca express-rate-limit, a API implementa um controle de taxa de requisições. Há um limite geral para todas as rotas, mitigando ataques de negação de serviço. Além disso, um limite muito mais estrito é aplicado aos endpoints de autenticação (login, recuperação de senha, etc.), tornando ataques de força bruta para adivinhar senhas praticamente inviáveis.
 
 ## 🛡️ Foco em Cibersegurança
 
@@ -43,6 +42,7 @@ A segurança foi um pilar central no desenvolvimento da aplicação. As seguinte
     2.  **`verificarPapel` (Autorização):** Uma vez que a identidade do usuário é confirmada, o segundo porteiro verifica seu "cargo" (`papel`: mestre, editor, etc.). Cada endpoint crítico possui uma lista de papéis autorizados, e se o usuário não tiver o cargo necessário, seu acesso é bloqueado com uma mensagem de "permissão negada".
 * **Prevenção de SQL Injection:** Todas as interações com o banco de dados MariaDB são realizadas através de **consultas parametrizadas**. Isso impede que dados maliciosos inseridos por um usuário sejam executados como comandos SQL, neutralizando um dos vetores de ataque mais comuns e perigosos.
 * **Regras de Negócio Seguras:** Foram implementadas lógicas no back-end para prevenir ações que poderiam comprometer o sistema, como impedir que um usuário `mestre` possa excluir ou rebaixar a si mesmo, garantindo a continuidade da administração da ferramenta.
+* **Prevenção de Ataques de Força Bruta e DDoS com Rate Limiting:** Utilizando a biblioteca express-rate-limit, a API implementa um controle de taxa de requisições. Há um limite geral para todas as rotas, mitigando ataques de negação de serviço. Além disso, um limite muito mais estrito é aplicado aos endpoints de autenticação (login, recuperação de senha, etc.), tornando ataques de força bruta para adivinhar senhas praticamente inviáveis.
 
 ## 🛠️ Tecnologias Utilizadas
 
