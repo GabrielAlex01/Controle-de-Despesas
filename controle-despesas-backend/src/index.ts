@@ -22,7 +22,7 @@ const pool = mariadb.createPool({
 // Limitador Geral para todas as rotas da API
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // Janela de 15 minutos
-    max: 200, // Limita cada IP a 100 requisições por janela
+    max: 100, // Limita cada IP a 100 requisições por janela
     message: { error: 'Muitas requisições enviadas a partir deste IP. Por favor, tente novamente após 15 minutos.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -31,7 +31,7 @@ const apiLimiter = rateLimit({
 // Limitador Estrito para rotas de autenticação (previne força bruta)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // Janela de 15 minutos
-    max: 90, // Limita cada IP a 5 requisições de autenticação por janela
+    max: 10, // Limita cada IP a 5 requisições de autenticação por janela
     message: { error: 'Muitas tentativas de login ou de alteração de senha a partir deste IP. Por favor, tente novamente após 15 minutos.' },
 });
 
