@@ -295,7 +295,7 @@ Acesse o MariaDB com o usuário `root` :
       nano .env
     ```
     
-Dentro do editor nano, cole o conteúdo abaixo e preencha com seus dados (a senha do root que você definiu, suas credenciais do Gmail, etc.).
+5. Dentro do editor nano, cole o conteúdo abaixo e preencha com seus dados (a senha do root que você definiu, suas credenciais do Gmail, etc.).
     ```env
     DB_PASSWORD="a_senha_que_voce_criou_para_o_mariadb"
     JWT_SECRET="crie_uma_chave_longa_e_aleatoria_aqui"
