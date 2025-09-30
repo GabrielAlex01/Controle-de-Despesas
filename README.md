@@ -49,7 +49,7 @@ A segurança foi um pilar central no desenvolvimento da aplicação. As seguinte
 * **Front-end:** HTML5, CSS3, TypeScript
 * **Back-end:** Node.js, Express.js, TypeScript
 * **Banco de Dados:** MariaDB
-* **Segurança:** JSON Web Token (JWT), bcrypt, crypto, Middlewares de autorização
+* **Segurança:** JSON Web Token (JWT), bcrypt, crypto, express-rate-limit e Middlewares de autorização
 * **Automação de E-mails:** Nodemailer, node-cron
 
 ## 🚀 Tutorial de Instalação e Execução
@@ -171,12 +171,27 @@ CREATE TABLE `logs` (
   `data_hora` timestamp NULL DEFAULT current_timestamp(),
   `usuario_id` int(11) DEFAULT NULL,
   `despesa_id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_logs_usuario_id` (`usuario_id`),
+  KEY `idx_logs_despesa_id` (`despesa_id`),
+  CONSTRAINT `fk_logs_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Crie o primeiro usuário Mestre manualmente para iniciar o sistema
+```
+
+### Script para Configuração de Usuário (Passo Crítico)
+
+*** Após criar as tabelas, execute este comando para garantir que o usuário root use um método de autenticação compatível com a aplicação. Substitua SUA_SENHA_AQUI pela senha que você definiu para o root do MariaDB. ***
+
+```sql
+GRANT USAGE ON *.* TO 'root'@'localhost' IDENTIFIED BY 'SUA_SENHA_AQUI';
+FLUSH PRIVILEGES;
+```
+### Script para Criar o Primeiro Administrador
+
+```sql
 -- Lembre-se de usar uma senha forte e gerar o hash dela para inserir aqui.
--- INSERT INTO usuarios (nome, email, senha_hash, papel) VALUES ('Admin', 'admin@empresa.com', 'seu_hash_bcrypt_aqui', 'mestre');
+INSERT INTO usuarios (nome, email, senha_hash, papel) VALUES ('Admin', 'admin@empresa.com', 'seu_hash_bcrypt_aqui', 'mestre');
 ```
 
 Com a configuração acima, o ambiente estará pronto para rodar a aplicação. Este projeto foi desenvolvido como uma solução prática para um desafio real do dia a dia, buscando aplicar conceitos modernos de desenvolvimento web, segurança e automação. Sinta-se à vontade para explorar, utilizar e contribuir com o projeto.
