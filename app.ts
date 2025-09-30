@@ -1,6 +1,6 @@
 
 console.log("app.ts foi carregado e está sendo executado.");
-// onstantes Globais ---
+// Constantes Globais 
 const API_BASE_URL = 'http://localhost:3000/api';
 
 // Interfaces de Tipos
@@ -113,9 +113,9 @@ const btnLogsAnterior = document.getElementById('btn-logs-anterior') as HTMLButt
 const btnLogsProximo = document.getElementById('btn-logs-proximo') as HTMLButtonElement;
 const logsPaginacaoInfo = document.getElementById('logs-paginacao-info') as HTMLSpanElement;
 const forgotPasswordLink = document.getElementById('forgot-password-link') as HTMLAnchorElement;
-console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink); // <-- Adicionar aqui
+console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink); 
 const modalForgotPasswordContainer = document.getElementById('modal-forgot-password-container') as HTMLDivElement;
-console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer); // <-- E aqui
+console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer); 
 const formForgotPassword = document.getElementById('form-forgot-password') as HTMLFormElement;
 const forgotEmailInput = document.getElementById('forgot-email') as HTMLInputElement;
 const btnForgotCancelar = document.getElementById('btn-forgot-cancelar') as HTMLButtonElement;

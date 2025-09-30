@@ -63,7 +63,7 @@ section h2 {
 
 
 .table-container {
-    overflow-x: auto; /* Garante que a tabela não quebre o layout em telas pequenas */
+    overflow-x: auto; 
 }
 
 table {
@@ -204,8 +204,8 @@ footer {
 
 /* Estilos de Status na Tabela */
 tr.status-pago {
-    background-color: #d4edda; /* Verde claro */
-    border-left: 5px solid #28a745; /* Borda verde escura */
+    background-color: #d4edda; 
+    border-left: 5px solid #28a745; 
 }
 
 tr.status-pago:hover {
@@ -255,20 +255,18 @@ tr.status-pendente:hover {
 }
 
 .btn-editar {
-    background-color: #007bff; /* Azul */
+    background-color: #007bff; 
 }
 
 .btn-excluir {
-    background-color: #dc3545; /* Vermelho */
+    background-color: #dc3545; 
 }
 
-/* Efeito ao passar o mouse */
 .btn-editar:hover, .btn-excluir:hover {
-    transform: translateY(-2px); /* Levanta o botão levemente */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Adiciona uma sombra */
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); 
 }
 
-/* Estilos do Painel de Resumo */
 #resumo-container {
     display: flex;
     justify-content: space-between;
@@ -298,12 +296,10 @@ tr.status-pendente:hover {
     color: #343a40;
 }
 
-/* Estilo especial para o card de Total Geral */
 .resumo-card.total-geral span {
-    color: #007bff; /* Cor de destaque azul */
+    color: #007bff; 
 }
 
-/* Estilos para o Contêiner do Gráfico */
 #grafico-container {
     background-color: #ffffff;
     padding: 20px;
@@ -316,7 +312,6 @@ tr.status-pendente:hover {
     max-height: 400px;
 }
 
-/* Estilos da Tela de Login */
 #login-container {
     display: flex;
     justify-content: center;
@@ -348,7 +343,7 @@ tr.status-pendente:hover {
 .btn-login {
     width: 100%;
     padding: 12px;
-    background-color: #28a745; /* Verde */
+    background-color: #28a745; 
     color: white;
     border: none;
     border-radius: 5px;
@@ -362,7 +357,6 @@ tr.status-pendente:hover {
     background-color: #218838;
 }
 
-/* Estilos para o Cabeçalho com Logout */
 header div {
     display: flex;
     align-items: center;
@@ -389,9 +383,9 @@ header div {
     background-color: #5a6268;
 }
 
-/* Adicione ao final do seu style.css */
+
 #btn-gerenciar-usuarios {
-    background-color: #ffc107; /* Amarelo */
+    background-color: #ffc107; 
     color: #212529;
     border: none;
     padding: 10px 20px;
@@ -421,7 +415,7 @@ header div {
 }
 
 #btn-adicionar-usuario {
-    background-color: #28a745; /* Verde */
+    background-color: #28a745; 
     color: white;
     border: none;
     padding: 10px 20px;
@@ -435,10 +429,8 @@ header div {
     background-color: #218838;
 }
 
-/* Adicione este código ao final do arquivo style.css */
-
 #btn-alterar-senha {
-    background-color: #17a2b8; /* Um azul-petróleo (info) */
+    background-color: #17a2b8; 
     color: white;
     border: none;
     padding: 10px 20px;
@@ -453,12 +445,11 @@ header div {
 }
 
 header a#btn-dashboard {
-    color: inherit; /* Herda a cor do elemento filho (o h1) */
-    text-decoration: none; /* Remove o sublinhado */
+    color: inherit; 
+    text-decoration: none; 
     cursor: pointer;
 }
 
-/* Adicione ao final do seu style.css */
 .btn-excluir-usuario {
     padding: 6px 12px;
     border: none;
@@ -468,7 +459,7 @@ header a#btn-dashboard {
     font-weight: bold;
     font-size: 0.9em;
     margin: 0 4px;
-    background-color: #dc3545; /* Vermelho */
+    background-color: #dc3545; 
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -477,9 +468,6 @@ header a#btn-dashboard {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Adicione no final do seu style.css */
-
-/* Estilo para o botão de editar usuário na tabela */
 .btn-editar-usuario {
     padding: 6px 12px;
     border: none;
@@ -489,25 +477,22 @@ header a#btn-dashboard {
     font-weight: bold;
     font-size: 0.9em;
     margin: 0 4px;
-    background-color: #007bff; /* Azul */
+    background-color: #007bff; 
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* NOVO: Estilo para quando o botão estiver desabilitado */
 .btn-editar-usuario:disabled {
-    background-color: #6c757d; /* Cinza */
+    background-color: #6c757d; 
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
 }
 .btn-editar-usuario:disabled:hover {
-     background-color: #6c757d; /* Mantém o cinza no hover */
+     background-color: #6c757d; 
 }
 
-/* Adicione no final do seu style.css */
-
 #btn-ver-logs {
-    background-color: #6f42c1; /* Roxo/Índigo */
+    background-color: #6f42c1; 
     color: white;
     border: none;
     padding: 10px 20px;
@@ -521,7 +506,6 @@ header a#btn-dashboard {
     background-color: #5a349b;
 }
 
-/* Adicione no final do seu style.css */
 .paginacao-container {
     display: flex;
     justify-content: center;
@@ -545,7 +529,7 @@ header a#btn-dashboard {
 }
 
 .btn-relatorio {
-    background-color: #17a2b8; /* Azul-petróleo (info) */
+    background-color: #17a2b8; 
     padding: 6px 12px;
     border: none;
     border-radius: 5px;

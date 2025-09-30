@@ -1,5 +1,3 @@
-// arquivo: gerar-hash.js (versão segura com input)
-
 const bcrypt = require('bcrypt');
 const readline = require('readline');
 

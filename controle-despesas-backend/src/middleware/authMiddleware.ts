@@ -1,14 +1,11 @@
-// src/middleware/authMiddleware.ts
-
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config'; // Importa o dotenv para ler o .env
 
-// Agora ele lê a MESMA chave secreta que o index.ts
+// Agora lê a MESMA chave secreta que o index.ts
 const JWT_SECRET = process.env.JWT_SECRET || 'segredo_padrao_de_emergencia';
 
 // Vamos estender a interface Request do Express para adicionar nossa propriedade 'usuario'
-// Isso ajuda o TypeScript a entender o que estamos fazendo
 export interface RequestComUsuario extends Request {
     usuario?: any; // Usamos 'any' por simplicidade, mas poderia ser uma interface de Usuário
 }
@@ -38,7 +35,7 @@ export const verificarToken = (req: RequestComUsuario, res: Response, next: Next
     }
 };
 
-// Middleware para verificar o PAPEL do usuário ---
+// Middleware para verificar o PAPEL do usuário
 export const verificarPapel = (papeisPermitidos: string[]) => {
     return (req: RequestComUsuario, res: Response, next: NextFunction) => {
         

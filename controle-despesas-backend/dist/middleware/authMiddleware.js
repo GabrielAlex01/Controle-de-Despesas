@@ -1,5 +1,4 @@
 "use strict";
-// src/middleware/authMiddleware.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.verificarPapel = exports.verificarToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 require("dotenv/config"); // Importa o dotenv para ler o .env
-// Agora ele lê a MESMA chave secreta que o index.ts
+// Agora lê a MESMA chave secreta que o index.ts
 const JWT_SECRET = process.env.JWT_SECRET || 'segredo_padrao_de_emergencia';
 const verificarToken = (req, res, next) => {
     // O token geralmente é enviado no cabeçalho 'Authorization' no formato 'Bearer TOKEN'
@@ -30,7 +29,7 @@ const verificarToken = (req, res, next) => {
     }
 };
 exports.verificarToken = verificarToken;
-// Middleware para verificar o PAPEL do usuário ---
+// Middleware para verificar o PAPEL do usuário
 const verificarPapel = (papeisPermitidos) => {
     return (req, res, next) => {
         // Pegamos o usuário que foi adicionado à requisição pelo middleware anterior (verificarToken)

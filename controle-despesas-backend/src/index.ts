@@ -1,6 +1,5 @@
-// src/index.ts - Versão com a correção final do BigInt no registro de usuário
-
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import mariadb from 'mariadb';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
@@ -15,11 +14,26 @@ import { randomBytes } from 'crypto';
 const pool = mariadb.createPool({
     host: '127.0.0.1',
     user: 'root',
-    password: process.env.DB_PASSWORD, 
+    password: process.env.DB_PASSWORD,
     database: 'controle_despesas',
     connectionLimit: 5
 });
 
+// Limitador Geral para todas as rotas da API
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // Janela de 15 minutos
+    max: 200, // Limita cada IP a 100 requisições por janela
+    message: { error: 'Muitas requisições enviadas a partir deste IP. Por favor, tente novamente após 15 minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Limitador Estrito para rotas de autenticação (previne força bruta)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // Janela de 15 minutos
+    max: 90, // Limita cada IP a 5 requisições de autenticação por janela
+    message: { error: 'Muitas tentativas de login ou de alteração de senha a partir deste IP. Por favor, tente novamente após 15 minutos.' },
+});
 
 // Nodemailer - Agendamento diário às 8h para verificar contas a vencer
 // Função principal que faz a verificação e o envio
@@ -122,7 +136,7 @@ const transporter = nodemailer.createTransport({
 // Limita o número de logs para evitar crescimento descontrolado
 async function registrarLog(acao: string, usuario_id: number, despesa_id: number | string | null) {
     let conn;
-    const LIMITE_LOGS = 300; // Definimos o limite aqui
+    const LIMITE_LOGS = 300; // Defina o limite aqui
 
     try {
         conn = await pool.getConnection();
@@ -165,6 +179,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'segredo_padrao_de_emergencia';
 
 app.use(express.json());
 app.use(cors());
+app.use('/api/', apiLimiter);
 
 // Rota de teste
 app.get('/', async (req, res) => {
@@ -207,15 +222,15 @@ app.get('/api/despesas/relatorio/:fornecedor', verificarToken, async (req, res) 
 });
 
 // ENDPOINT SOLICITAR REDEFINIÇÃO DE SENHA
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
     const { email } = req.body;
     let conn;
     try {
         conn = await pool.getConnection();
         const [usuario] = await conn.query("SELECT * FROM usuarios WHERE email = ?", [email]);
 
-        // IMPORTANTE: Mesmo que o usuário не seja encontrado, enviamos uma resposta de sucesso
-        // para evitar que hackers descubram quais e-mails estão cadastrados.
+        // IMPORTANTE: Mesmo que o usuário seja encontrado, enviamos uma resposta de sucesso
+        // Para evitar que invasores descubram quais e-mails estão cadastrados.
         if (!usuario) {
             return res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de redefinição foi enviado.' });
         }
@@ -261,7 +276,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // ENDPOINT EFETIVAMENTE REDEFINIR A SENHA
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
     const { token, novaSenha } = req.body;
 
     if (!token || !novaSenha) {
@@ -301,29 +316,46 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // Endpoint para o MESTRE excluir um usuário
 app.delete('/api/usuarios/:id', verificarToken, verificarPapel(['mestre']), async (req: RequestComUsuario, res) => {
     const idParaExcluir = req.params.id;
-    const idDoMestre = req.usuario.id; // ID do usuário logado (o mestre)
+    const idDoMestreLogado = req.usuario.id;
 
-    // REGRA DE NEGÓCIO CRÍTICA: Impede que o mestre se auto-delete
-    if (idParaExcluir == idDoMestre) {
+    if (idParaExcluir == idDoMestreLogado) {
         return res.status(403).json({ error: 'Ação proibida: um usuário mestre não pode excluir a si mesmo.' });
     }
 
     let conn;
     try {
         conn = await pool.getConnection();
-        const sql = "DELETE FROM usuarios WHERE id = ?";
-        const result = await conn.query(sql, [idParaExcluir]);
+        await conn.beginTransaction();
+
+        const [usuarioParaExcluir] = await conn.query("SELECT nome FROM usuarios WHERE id = ?", [idParaExcluir]);
+        if (!usuarioParaExcluir) {
+            await conn.rollback();
+            return res.status(404).json({ error: 'Usuário não encontrado.' });
+        }
+        const nomeUsuarioExcluido = usuarioParaExcluir.nome;
+
+        const sqlUpdateLogs = `
+            UPDATE logs 
+            SET descricao = CONCAT('(Ação de usuário deletado: ${nomeUsuarioExcluido}) ', descricao) 
+            WHERE usuario_id = ?
+        `;
+        await conn.query(sqlUpdateLogs, [idParaExcluir]);
+
+        const sqlDeleteUser = "DELETE FROM usuarios WHERE id = ?";
+        const result = await conn.query(sqlDeleteUser, [idParaExcluir]);
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Usuário не encontrado para exclusão.' });
+            await conn.rollback();
+            return res.status(404).json({ error: 'Falha ao excluir o usuário.' });
         }
 
-        // ADICIONAR LOG DE EXCLUSÃO DE USUÁRIO ---
-        await registrarLog(`Excluiu o usuário ID ${idParaExcluir}`, idDoMestre, null);
+        await registrarLog(`Excluiu o usuário "${nomeUsuarioExcluido}" (ID: ${idParaExcluir})`, idDoMestreLogado, null);
 
+        await conn.commit();
         res.status(204).send();
 
     } catch (err) {
+        if (conn) await conn.rollback();
         console.error("Erro ao excluir usuário:", err);
         res.status(500).json({ error: 'Erro interno ao excluir o usuário.' });
     } finally {
@@ -336,31 +368,29 @@ app.get('/api/logs', verificarToken, verificarPapel(['mestre']), async (req, res
     let conn;
     try {
         conn = await pool.getConnection();
-
-        // Captura os parâmetros da query string (ex: /api/logs?page=2&limit=20)
         const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 20; // 20 logs por página como padrão
+        const limit = parseInt(req.query.limit as string) || 20;
         const offset = (page - 1) * limit;
 
-        // Busca a contagem total de logs para a paginação no front-end
         const totalResult = await conn.query("SELECT COUNT(*) as total FROM logs");
         const totalLogs = Number(totalResult[0].total);
 
-        // Busca a página específica de logs com JOIN e ordenação
+        // Trocamos JOIN por LEFT JOIN e usamos COALESCE para tratar nomes nulos
         const sql = `
             SELECT 
-                logs.id, logs.descricao, logs.data_hora, 
-                usuarios.nome AS nome_usuario 
-            FROM logs 
-            JOIN usuarios ON logs.usuario_id = usuarios.id 
-            ORDER BY logs.data_hora DESC
+                l.id, 
+                l.descricao, 
+                l.data_hora, 
+                COALESCE(u.nome, 'Usuário Deletado') AS nome_usuario 
+            FROM logs l
+            LEFT JOIN usuarios u ON l.usuario_id = u.id 
+            ORDER BY l.data_hora DESC
             LIMIT ? OFFSET ?
         `;
 
         const logs = await conn.query(sql, [limit, offset]);
         const logsProcessados = logs.map((log: any) => ({ ...log, id: Number(log.id) }));
 
-        // 4. Retorna um objeto estruturado com os logs e informações de paginação
         res.json({
             logs: logsProcessados,
             total: totalLogs,
@@ -378,7 +408,7 @@ app.get('/api/logs', verificarToken, verificarPapel(['mestre']), async (req, res
 
 
 // Endpoint para o próprio usuário alterar sua senha
-app.put('/api/usuarios/alterar-senha', verificarToken, async (req: RequestComUsuario, res) => {
+app.put('/api/usuarios/alterar-senha', authLimiter, verificarToken, async (req: RequestComUsuario, res) => {
     // Pega os dados do corpo da requisição
     const { senhaAtual, novaSenha } = req.body;
 
@@ -701,17 +731,31 @@ app.delete('/api/despesas/:id', verificarToken, verificarPapel(['editor', 'mestr
     let conn;
     try {
         conn = await pool.getConnection();
+
+        // 1. Busca o nome da despesa ANTES de deletar, para usar no log.
+        const [despesaParaExcluir] = await conn.query("SELECT fornecedor FROM despesas WHERE id = ?", [id]);
+        if (!despesaParaExcluir) {
+            return res.status(404).json({ error: 'Despesa não encontrada para exclusão.' });
+        }
+        const nomeDespesaExcluida = despesaParaExcluir.fornecedor;
+
+        // 2. Deleta a despesa do banco de dados.
         const sql = "DELETE FROM despesas WHERE id = ?";
         const result = await conn.query(sql, [id]);
+
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Despesa não encontrada.' });
+            // Não deve acontecer por causa da verificação acima, mas é uma segurança extra.
+            return res.status(404).json({ error: 'Falha ao excluir a despesa.' });
         }
 
         const usuarioIdLog = (req as RequestComUsuario).usuario.id;
-        // Para o log de exclusão, podemos passar o ID da despesa que foi excluída.
-        await registrarLog(`Excluiu a despesa ID ${id}`, usuarioIdLog, id);
+
+        // 3. Registra o log com o nome da despesa que foi guardado.
+        const descricaoLog = `Excluiu a despesa "${nomeDespesaExcluida}" (ID: ${id})`;
+        await registrarLog(descricaoLog, usuarioIdLog, null);
 
         res.status(204).send();
+
     } catch (err) {
         console.error("Erro ao excluir despesa:", err);
         res.status(500).json({ error: 'Erro ao excluir despesa no banco de dados.' });
@@ -786,7 +830,7 @@ app.get('/api/usuarios', verificarToken, verificarPapel(['mestre']), async (req,
 });
 
 // Endpoint para LOGIN de usuário
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
     const { email, senha } = req.body;
 
     if (!email || !senha) {

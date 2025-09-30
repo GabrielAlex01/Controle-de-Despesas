@@ -1,5 +1,4 @@
 "use strict";
-// src/index.ts - Versão com a correção final do BigInt no registro de usuário
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -14,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const mariadb_1 = __importDefault(require("mariadb"));
 const cors_1 = __importDefault(require("cors"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
@@ -22,16 +22,31 @@ const authMiddleware_1 = require("./middleware/authMiddleware");
 require("dotenv/config");
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const node_cron_1 = __importDefault(require("node-cron"));
+const crypto_1 = require("crypto");
 // Configurações da conexão com o banco de dados
 const pool = mariadb_1.default.createPool({
     host: '127.0.0.1',
     user: 'root',
-    password: process.env.DB_PASSWORD, // Lembre-se de usar sua senha
+    password: process.env.DB_PASSWORD,
     database: 'controle_despesas',
     connectionLimit: 5
 });
-//Nodemailer - Agendamento diário às 8h para verificar contas a vencer
-//Função principal que faz a verificação e o envio
+// Limitador Geral para todas as rotas da API
+const apiLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000, // Janela de 15 minutos
+    max: 200, // Limita cada IP a 100 requisições por janela
+    message: { error: 'Muitas requisições enviadas a partir deste IP. Por favor, tente novamente após 15 minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+// Limitador Estrito para rotas de autenticação (previne força bruta)
+const authLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000, // Janela de 15 minutos
+    max: 90, // Limita cada IP a 5 requisições de autenticação por janela
+    message: { error: 'Muitas tentativas de login ou de alteração de senha a partir deste IP. Por favor, tente novamente após 15 minutos.' },
+});
+// Nodemailer - Agendamento diário às 8h para verificar contas a vencer
+// Função principal que faz a verificação e o envio
 function verificarEVenviarEmailsDeVencimento() {
     return __awaiter(this, void 0, void 0, function* () {
         console.log('----------------------------------------------------');
@@ -39,7 +54,7 @@ function verificarEVenviarEmailsDeVencimento() {
         let conn;
         try {
             conn = yield pool.getConnection();
-            // Passo 1: Buscar despesas pendentes com vencimento nos próximos 6 dias
+            // Buscar despesas pendentes com vencimento nos próximos 6 dias
             const sqlDespesas = `
             SELECT fornecedor, valor, vencimento 
             FROM despesas 
@@ -53,7 +68,7 @@ function verificarEVenviarEmailsDeVencimento() {
                 console.log("Nenhuma despesa próxima do vencimento encontrada. Nenhum e-mail enviado.");
                 return;
             }
-            // Passo 2: Buscar os e-mails dos editores e mestres
+            // Buscar os e-mails dos editores e mestres
             const sqlUsuarios = "SELECT email FROM usuarios WHERE papel IN ('editor', 'mestre')";
             const destinatarios = yield conn.query(sqlUsuarios);
             // Se não houver destinatários, não faz nada
@@ -62,7 +77,7 @@ function verificarEVenviarEmailsDeVencimento() {
                 return;
             }
             const listaEmails = destinatarios.map((user) => user.email);
-            // Passo 3: Montar o corpo do e-mail em HTML
+            // Montar o corpo do e-mail em HTML
             const htmlEmail = `
             <h1>Alerta de Contas a Vencer</h1>
             <p>Olá! Este é um aviso automático do sistema de Controle de Despesas.</p>
@@ -88,7 +103,7 @@ function verificarEVenviarEmailsDeVencimento() {
             <br>
             <p>Por favor, verifique o sistema para mais detalhes.</p>
         `;
-            // Passo 4: Enviar o e-mail
+            // Enviar o e-mail
             yield transporter.sendMail({
                 from: `"Controle de Despesas" <${process.env.EMAIL_USER}>`,
                 to: process.env.EMAIL_USER, // Envia para o e-mail principal (ou pode usar a `listaEmails`)
@@ -125,18 +140,18 @@ const transporter = nodemailer_1.default.createTransport({
 function registrarLog(acao, usuario_id, despesa_id) {
     return __awaiter(this, void 0, void 0, function* () {
         let conn;
-        const LIMITE_LOGS = 300; // Definimos o limite aqui
+        const LIMITE_LOGS = 300; // Defina o limite aqui
         try {
             conn = yield pool.getConnection();
             yield conn.beginTransaction();
-            // 1. Insere o novo log
+            //Insere o novo log
             const sqlInsert = "INSERT INTO logs (descricao, usuario_id, despesa_id) VALUES (?, ?, ?)";
             yield conn.query(sqlInsert, [acao, usuario_id, despesa_id]);
             console.log('Log registrado com sucesso:', acao);
-            // 2. Verifica a contagem de logs
+            // Verifica a contagem de logs
             const rows = yield conn.query("SELECT COUNT(*) as total FROM logs");
             const totalLogs = Number(rows[0].total);
-            // 3. Se a contagem exceder o limite, apaga o mais antigo
+            // Se a contagem exceder o limite, apaga o mais antigo
             if (totalLogs > LIMITE_LOGS) {
                 // Encontra o ID do log mais antigo (ORDER BY data_hora ASC)
                 const [logMaisAntigo] = yield conn.query("SELECT id FROM logs ORDER BY data_hora ASC LIMIT 1");
@@ -165,6 +180,7 @@ const port = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'segredo_padrao_de_emergencia';
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
+app.use('/api/', apiLimiter);
 // Rota de teste
 app.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     let conn;
@@ -181,27 +197,145 @@ app.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             conn.release();
     }
 }));
+// Endpoint para buscar o histórico de uma despesa para o relatório
+app.get('/api/despesas/relatorio/:fornecedor', authMiddleware_1.verificarToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    let { fornecedor } = req.params;
+    let conn;
+    try {
+        conn = yield pool.getConnection();
+        // Limpa o nome do fornecedor para buscar todas as parcelas/ocorrências
+        // Ex: "Conta de Luz (Parcela 1/12)" vira "Conta de Luz"
+        const nomeBaseFornecedor = fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim();
+        // Usamos LIKE para pegar todas as despesas que começam com o nome base
+        const sql = "SELECT valor, vencimento FROM despesas WHERE fornecedor LIKE ? AND status = 'Pago' ORDER BY vencimento ASC";
+        const historico = yield conn.query(sql, [`${nomeBaseFornecedor}%`]);
+        res.json(historico);
+    }
+    catch (err) {
+        console.error("Erro ao buscar histórico da despesa:", err);
+        res.status(500).json({ error: 'Erro interno ao buscar histórico da despesa.' });
+    }
+    finally {
+        if (conn)
+            conn.release();
+    }
+}));
+// ENDPOINT SOLICITAR REDEFINIÇÃO DE SENHA
+app.post('/api/auth/forgot-password', authLimiter, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email } = req.body;
+    let conn;
+    try {
+        conn = yield pool.getConnection();
+        const [usuario] = yield conn.query("SELECT * FROM usuarios WHERE email = ?", [email]);
+        // IMPORTANTE: Mesmo que o usuário seja encontrado, enviamos uma resposta de sucesso
+        // Para evitar que invasores descubram quais e-mails estão cadastrados.
+        if (!usuario) {
+            return res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de redefinição foi enviado.' });
+        }
+        // 1. Gerar um token seguro e aleatório
+        const resetToken = (0, crypto_1.randomBytes)(32).toString('hex');
+        // 2. Salvar o token "hasheado" no banco de dados para segurança (opcional, mas recomendado)
+        // Para simplificar, salvaremos o token direto, mas em produção o ideal seria salvar o hash do token.
+        // Vamos definir uma expiração de 1 hora.
+        const expires = new Date(Date.now() + 3600000); // 1 hora a partir de agora
+        const sqlUpdate = "UPDATE usuarios SET reset_token = ?, reset_token_expires = ? WHERE id = ?";
+        yield conn.query(sqlUpdate, [resetToken, expires, usuario.id]);
+        // Enviar o e-mail com o link de redefinição
+        // ATENÇÃO: A URL deve apontar para o seu front-end. O padrão do Live Server é 127.0.0.1:5500
+        const resetUrl = `http://127.0.0.1:5500/reset-password.html?token=${resetToken}`;
+        const htmlEmail = `
+            <h1>Redefinição de Senha</h1>
+            <p>Olá, ${usuario.nome}.</p>
+            <p>Você solicitou uma redefinição de senha. Por favor, clique no link abaixo para criar uma nova senha:</p>
+            <a href="${resetUrl}" target="_blank">Redefinir Minha Senha</a>
+            <p>Se você não solicitou isso, por favor, ignore este e-mail.</p>
+            <p>Este link é válido por 1 hora.</p>
+        `;
+        yield transporter.sendMail({
+            from: `"Controle de Despesas" <${process.env.EMAIL_USER}>`,
+            to: usuario.email,
+            subject: 'Link para Redefinição de Senha',
+            html: htmlEmail,
+        });
+        res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de redefinição foi enviado.' });
+    }
+    catch (err) {
+        console.error("Erro em forgot-password:", err);
+        res.status(500).json({ error: 'Erro interno no servidor.' });
+    }
+    finally {
+        if (conn)
+            conn.release();
+    }
+}));
+// ENDPOINT EFETIVAMENTE REDEFINIR A SENHA
+app.post('/api/auth/reset-password', authLimiter, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { token, novaSenha } = req.body;
+    if (!token || !novaSenha) {
+        return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+    }
+    let conn;
+    try {
+        conn = yield pool.getConnection();
+        // Encontra o usuário pelo token E verifica se ele não expirou
+        const sqlFind = "SELECT * FROM usuarios WHERE reset_token = ? AND reset_token_expires > NOW()";
+        const [usuario] = yield conn.query(sqlFind, [token]);
+        if (!usuario) {
+            return res.status(400).json({ error: 'Token inválido ou expirado.' });
+        }
+        // Se o token é válido, cria o hash da nova senha
+        const saltRounds = 10;
+        const novaSenhaHash = yield bcrypt_1.default.hash(novaSenha, saltRounds);
+        // Atualiza a senha e NULIFICA o token para que não possa ser usado de novo
+        const sqlUpdate = "UPDATE usuarios SET senha_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?";
+        yield conn.query(sqlUpdate, [novaSenhaHash, usuario.id]);
+        res.status(200).json({ message: 'Senha redefinida com sucesso!' });
+    }
+    catch (err) {
+        console.error("Erro em reset-password:", err);
+        res.status(500).json({ error: 'Erro interno no servidor.' });
+    }
+    finally {
+        if (conn)
+            conn.release();
+    }
+}));
 // Endpoint para o MESTRE excluir um usuário
 app.delete('/api/usuarios/:id', authMiddleware_1.verificarToken, (0, authMiddleware_1.verificarPapel)(['mestre']), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const idParaExcluir = req.params.id;
-    const idDoMestre = req.usuario.id; // ID do usuário logado (o mestre)
-    // REGRA DE NEGÓCIO CRÍTICA: Impede que o mestre se auto-delete
-    if (idParaExcluir == idDoMestre) {
+    const idDoMestreLogado = req.usuario.id;
+    if (idParaExcluir == idDoMestreLogado) {
         return res.status(403).json({ error: 'Ação proibida: um usuário mestre não pode excluir a si mesmo.' });
     }
     let conn;
     try {
         conn = yield pool.getConnection();
-        const sql = "DELETE FROM usuarios WHERE id = ?";
-        const result = yield conn.query(sql, [idParaExcluir]);
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Usuário не encontrado para exclusão.' });
+        yield conn.beginTransaction();
+        const [usuarioParaExcluir] = yield conn.query("SELECT nome FROM usuarios WHERE id = ?", [idParaExcluir]);
+        if (!usuarioParaExcluir) {
+            yield conn.rollback();
+            return res.status(404).json({ error: 'Usuário não encontrado.' });
         }
-        // ADICIONAR LOG DE EXCLUSÃO DE USUÁRIO ---
-        yield registrarLog(`Excluiu o usuário ID ${idParaExcluir}`, idDoMestre, null);
+        const nomeUsuarioExcluido = usuarioParaExcluir.nome;
+        const sqlUpdateLogs = `
+            UPDATE logs 
+            SET descricao = CONCAT('(Ação de usuário deletado: ${nomeUsuarioExcluido}) ', descricao) 
+            WHERE usuario_id = ?
+        `;
+        yield conn.query(sqlUpdateLogs, [idParaExcluir]);
+        const sqlDeleteUser = "DELETE FROM usuarios WHERE id = ?";
+        const result = yield conn.query(sqlDeleteUser, [idParaExcluir]);
+        if (result.affectedRows === 0) {
+            yield conn.rollback();
+            return res.status(404).json({ error: 'Falha ao excluir o usuário.' });
+        }
+        yield registrarLog(`Excluiu o usuário "${nomeUsuarioExcluido}" (ID: ${idParaExcluir})`, idDoMestreLogado, null);
+        yield conn.commit();
         res.status(204).send();
     }
     catch (err) {
+        if (conn)
+            yield conn.rollback();
         console.error("Erro ao excluir usuário:", err);
         res.status(500).json({ error: 'Erro interno ao excluir o usuário.' });
     }
@@ -215,26 +349,25 @@ app.get('/api/logs', authMiddleware_1.verificarToken, (0, authMiddleware_1.verif
     let conn;
     try {
         conn = yield pool.getConnection();
-        // 1. Captura os parâmetros da query string (ex: /api/logs?page=2&limit=20)
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20; // 20 logs por página como padrão
+        const limit = parseInt(req.query.limit) || 20;
         const offset = (page - 1) * limit;
-        // 2. Busca a contagem total de logs para a paginação no front-end
         const totalResult = yield conn.query("SELECT COUNT(*) as total FROM logs");
         const totalLogs = Number(totalResult[0].total);
-        // 3. Busca a página específica de logs com JOIN e ordenação
+        // Trocamos JOIN por LEFT JOIN e usamos COALESCE para tratar nomes nulos
         const sql = `
             SELECT 
-                logs.id, logs.descricao, logs.data_hora, 
-                usuarios.nome AS nome_usuario 
-            FROM logs 
-            JOIN usuarios ON logs.usuario_id = usuarios.id 
-            ORDER BY logs.data_hora DESC
+                l.id, 
+                l.descricao, 
+                l.data_hora, 
+                COALESCE(u.nome, 'Usuário Deletado') AS nome_usuario 
+            FROM logs l
+            LEFT JOIN usuarios u ON l.usuario_id = u.id 
+            ORDER BY l.data_hora DESC
             LIMIT ? OFFSET ?
         `;
         const logs = yield conn.query(sql, [limit, offset]);
         const logsProcessados = logs.map((log) => (Object.assign(Object.assign({}, log), { id: Number(log.id) })));
-        // 4. Retorna um objeto estruturado com os logs e informações de paginação
         res.json({
             logs: logsProcessados,
             total: totalLogs,
@@ -252,12 +385,12 @@ app.get('/api/logs', authMiddleware_1.verificarToken, (0, authMiddleware_1.verif
     }
 }));
 // Endpoint para o próprio usuário alterar sua senha
-app.put('/api/usuarios/alterar-senha', authMiddleware_1.verificarToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // 1. Pega os dados do corpo da requisição
+app.put('/api/usuarios/alterar-senha', authLimiter, authMiddleware_1.verificarToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // Pega os dados do corpo da requisição
     const { senhaAtual, novaSenha } = req.body;
-    // 2. Pega o ID do usuário a partir do token JWT (é mais seguro, pois vem do login)
+    // Pega o ID do usuário a partir do token JWT (é mais seguro, pois vem do login)
     const idUsuarioLogado = req.usuario.id;
-    // 3. Validação básica
+    // Validação básica
     if (!senhaAtual || !novaSenha) {
         return res.status(400).json({ error: 'A senha atual e a nova senha são obrigatórias.' });
     }
@@ -267,24 +400,24 @@ app.put('/api/usuarios/alterar-senha', authMiddleware_1.verificarToken, (req, re
     let conn;
     try {
         conn = yield pool.getConnection();
-        // 4. Busca o usuário no banco para pegar o hash da senha atual
+        // Busca o usuário no banco para pegar o hash da senha atual
         const [usuario] = yield conn.query("SELECT * FROM usuarios WHERE id = ?", [idUsuarioLogado]);
         if (!usuario) {
             // Isso não deveria acontecer se o token for válido, mas é uma boa verificação
             return res.status(404).json({ error: 'Usuário não encontrado.' });
         }
-        // 5. Compara a senha atual enviada com o hash salvo no banco
+        // Compara a senha atual enviada com o hash salvo no banco
         const senhaAtualCorreta = yield bcrypt_1.default.compare(senhaAtual, usuario.senha_hash);
         if (!senhaAtualCorreta) {
             return res.status(403).json({ error: 'A senha atual está incorreta.' }); // 403 Forbidden
         }
-        // 6. Se a senha atual estiver correta, cria um novo hash para a nova senha
+        // Se a senha atual estiver correta, cria um novo hash para a nova senha
         const saltRounds = 10;
         const novaSenhaHash = yield bcrypt_1.default.hash(novaSenha, saltRounds);
-        // 7. Atualiza o banco de dados com o novo hash
+        // Atualiza o banco de dados com o novo hash
         const sql = "UPDATE usuarios SET senha_hash = ? WHERE id = ?";
         yield conn.query(sql, [novaSenhaHash, idUsuarioLogado]);
-        // 8. Envia a resposta de sucesso
+        // Envia a resposta de sucesso
         res.status(200).json({ message: 'Senha alterada com sucesso!' });
     }
     catch (err) {
@@ -310,22 +443,21 @@ app.put('/api/usuarios/:id/papel', authMiddleware_1.verificarToken, (0, authMidd
     let conn;
     try {
         conn = yield pool.getConnection();
-        // 1. Busca o nome do usuário que SERÁ alterado, para usar no log.
+        // Busca o nome do usuário que SERÁ alterado, para usar no log.
         const [usuarioAlvo] = yield conn.query("SELECT nome FROM usuarios WHERE id = ?", [idParaAlterar]);
         if (!usuarioAlvo) {
             return res.status(404).json({ error: 'Usuário alvo da alteração não encontrado.' });
         }
         const nomeUsuarioAlvo = usuarioAlvo.nome;
-        // 2. Executa a atualização do papel
+        // Executa a atualização do papel
         const sql = "UPDATE usuarios SET papel = ? WHERE id = ?";
         const result = yield conn.query(sql, [papel, idParaAlterar]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Usuário não encontrado para atualização.' });
         }
-        // 3. Registra a ação no log com o nome do usuário
+        // Registra a ação no log com o nome do usuário
         const descricaoLog = `Alterou o papel do usuário "${nomeUsuarioAlvo}" (ID: ${idParaAlterar}) para "${papel}"`;
         yield registrarLog(descricaoLog, idDoMestre, null); // despesa_id é null aqui
-        // --- FIM DA ALTERAÇÃO ---
         res.status(200).json({ message: 'Papel do usuário atualizado com sucesso.' });
     }
     catch (err) {
@@ -358,14 +490,15 @@ app.get('/api/despesas', authMiddleware_1.verificarToken, (req, res) => __awaite
     }
 }));
 // Endpoint para CRIAR uma nova despesa
-app.post('/api/despesas', authMiddleware_1.verificarToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, numero_parcelas } = req.body;
+app.post('/api/despesas', authMiddleware_1.verificarToken, (0, authMiddleware_1.verificarPapel)(['editor', 'mestre']), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, numero_parcelas, tem_valor_fixo, valor_fixo } = req.body;
     if (!fornecedor || !valor || !vencimento || !categoria || !periodicidade) {
         return res.status(400).json({ error: 'Campos obrigatórios estão faltando.' });
     }
     let conn;
     try {
         conn = yield pool.getConnection();
+        const usuarioIdLog = req.usuario.id;
         if (periodicidade === 'Parcelada' && numero_parcelas >= 2) {
             const dataInicial = new Date(vencimento + 'T03:00:00');
             const createdIds = [];
@@ -373,33 +506,37 @@ app.post('/api/despesas', authMiddleware_1.verificarToken, (req, res) => __await
                 const dataParcela = new Date(dataInicial);
                 dataParcela.setMonth(dataInicial.getMonth() + (i - 1));
                 const vencimentoParcela = dataParcela.toISOString().split('T')[0];
+                const fornecedorParcela = `${fornecedor} (Parcela ${i}/${numero_parcelas})`;
                 const sql = `
-                    INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, total_parcelas) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, total_parcelas, tem_valor_fixo, valor_fixo) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
                 const params = [
-                    `${fornecedor} (Parcela ${i}/${numero_parcelas})`, valor, vencimentoParcela, categoria,
-                    'Parcelada', notaFiscal, 'Pendente', 'Pendente', 'Pendente', numero_parcelas
+                    fornecedorParcela, valor, vencimentoParcela, categoria,
+                    'Parcelada', notaFiscal, 'Pendente', 'Pendente', 'Pendente', numero_parcelas,
+                    tem_valor_fixo, valor_fixo
                 ];
                 const result = yield conn.query(sql, params);
                 const novoId = Number(result.insertId);
-                const usuarioIdLog = req.usuario.id;
-                yield registrarLog(`Criou a despesa: "${fornecedor}"`, usuarioIdLog, novoId);
-                createdIds.push(Number(result.insertId));
+                yield registrarLog(`Criou a despesa: "${fornecedorParcela}"`, usuarioIdLog, novoId);
+                createdIds.push(novoId);
             }
             res.status(201).json({ message: `${numero_parcelas} parcelas criadas com sucesso.`, ids: createdIds });
         }
         else {
             const sql = `
-                INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, tem_valor_fixo, valor_fixo) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
             const params = [
                 fornecedor, valor, vencimento, categoria, periodicidade,
-                notaFiscal, situacaoFinanceiro, situacaoFiscal, status
+                notaFiscal, situacaoFinanceiro, situacaoFiscal, status,
+                tem_valor_fixo, valor_fixo
             ];
             const result = yield conn.query(sql, params);
-            res.status(201).json(Object.assign({ id: Number(result.insertId) }, req.body));
+            const novoId = Number(result.insertId);
+            yield registrarLog(`Criou a despesa: "${fornecedor}"`, usuarioIdLog, novoId);
+            res.status(201).json(Object.assign({ id: novoId }, req.body));
         }
     }
     catch (err) {
@@ -412,7 +549,7 @@ app.post('/api/despesas', authMiddleware_1.verificarToken, (req, res) => __await
     }
 }));
 // Endpoint para ATUALIZAR uma despesa existente
-app.put('/api/despesas/:id', authMiddleware_1.verificarToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.put('/api/despesas/:id', authMiddleware_1.verificarToken, (0, authMiddleware_1.verificarPapel)(['editor', 'mestre']), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const dadosAtualizados = req.body;
     if (!dadosAtualizados.fornecedor || !dadosAtualizados.valor || !dadosAtualizados.vencimento) {
@@ -421,10 +558,9 @@ app.put('/api/despesas/:id', authMiddleware_1.verificarToken, (req, res) => __aw
     let conn;
     try {
         conn = yield pool.getConnection();
-        // Primeiro, buscamos o estado da despesa ANTES de qualquer alteração
+        // Busca o estado da despesa ANTES de qualquer alteração
         const [despesaAntiga] = yield conn.query("SELECT * FROM despesas WHERE id = ?", [id]);
         if (!despesaAntiga) {
-            // Se não encontrarmos, liberamos a conexão e retornamos erro
             if (conn)
                 conn.release();
             return res.status(404).json({ error: 'Despesa não encontrada para buscar estado antigo.' });
@@ -432,73 +568,105 @@ app.put('/api/despesas/:id', authMiddleware_1.verificarToken, (req, res) => __aw
         const sqlUpdate = `
             UPDATE despesas SET 
             fornecedor = ?, valor = ?, vencimento = ?, categoria = ?, periodicidade = ?, 
-            notaFiscal = ?, situacaoFinanceiro = ?, situacaoFiscal = ?, status = ?, total_parcelas = ?
+            notaFiscal = ?, situacaoFinanceiro = ?, situacaoFiscal = ?, status = ?, 
+            total_parcelas = ?, tem_valor_fixo = ?, valor_fixo = ?
             WHERE id = ?
         `;
         const paramsUpdate = [
             dadosAtualizados.fornecedor, dadosAtualizados.valor, dadosAtualizados.vencimento, dadosAtualizados.categoria, dadosAtualizados.periodicidade,
-            dadosAtualizados.notaFiscal, dadosAtualizados.situacaoFinanceiro, dadosAtualizados.situacaoFiscal, dadosAtualizados.status, dadosAtualizados.total_parcelas,
+            dadosAtualizados.notaFiscal, dadosAtualizados.situacaoFinanceiro, dadosAtualizados.situacaoFiscal, dadosAtualizados.status,
+            dadosAtualizados.total_parcelas, dadosAtualizados.tem_valor_fixo, dadosAtualizados.valor_fixo,
             id
         ];
         const resultUpdate = yield conn.query(sqlUpdate, paramsUpdate);
         if (resultUpdate.affectedRows === 0) {
             return res.status(404).json({ error: 'Despesa não encontrada para atualizar.' });
         }
-        // LÓGICA DE LOGS DETALHADOS
+        // Lógica de Logs Detalhados
         const alteracoes = [];
-        // 1. Compara o Status
-        if (despesaAntiga.status !== dadosAtualizados.status) {
+        if (despesaAntiga.status !== dadosAtualizados.status)
             alteracoes.push(`Status alterado de '${despesaAntiga.status}' para '${dadosAtualizados.status}'`);
-        }
-        // 2. Compara a Situação Fiscal
-        if (despesaAntiga.situacaoFiscal !== dadosAtualizados.situacaoFiscal) {
+        if (despesaAntiga.situacaoFiscal !== dadosAtualizados.situacaoFiscal)
             alteracoes.push(`Situação Fiscal alterada de '${despesaAntiga.situacaoFiscal}' para '${dadosAtualizados.situacaoFiscal}'`);
-        }
-        // 3. Compara a Situação Financeira
-        if (despesaAntiga.situacaoFinanceiro !== dadosAtualizados.situacaoFinanceiro) {
+        if (despesaAntiga.situacaoFinanceiro !== dadosAtualizados.situacaoFinanceiro)
             alteracoes.push(`Situação Financeira alterada de '${despesaAntiga.situacaoFinanceiro}' para '${dadosAtualizados.situacaoFinanceiro}'`);
-        }
-        // 4. Compara o Valor (convertendo para número para evitar falsos positivos)
-        if (parseFloat(despesaAntiga.valor) !== parseFloat(dadosAtualizados.valor)) {
+        if (parseFloat(despesaAntiga.valor) !== parseFloat(dadosAtualizados.valor))
             alteracoes.push(`Valor alterado de R$ ${parseFloat(despesaAntiga.valor).toFixed(2)} para R$ ${parseFloat(dadosAtualizados.valor).toFixed(2)}`);
-        }
-        // 5. Compara o Fornecedor/Título
-        if (despesaAntiga.fornecedor !== dadosAtualizados.fornecedor) {
+        if (despesaAntiga.fornecedor !== dadosAtualizados.fornecedor)
             alteracoes.push(`Título alterado de "${despesaAntiga.fornecedor}" para "${dadosAtualizados.fornecedor}"`);
+        if (despesaAntiga.categoria !== dadosAtualizados.categoria) {
+            alteracoes.push(`Categoria alterada de '${despesaAntiga.categoria}' para '${dadosAtualizados.categoria}'`);
+        }
+        if (despesaAntiga.periodicidade !== dadosAtualizados.periodicidade) {
+            alteracoes.push(`Periodicidade alterada de '${despesaAntiga.periodicidade}' para '${dadosAtualizados.periodicidade}'`);
+        }
+        if (despesaAntiga.notaFiscal !== dadosAtualizados.notaFiscal) {
+            alteracoes.push(`Nota Fiscal alterada de "${despesaAntiga.notaFiscal || 'N/A'}" para "${dadosAtualizados.notaFiscal || 'N/A'}"`);
         }
         let descricaoLog;
         if (alteracoes.length > 0) {
-            // Se houveram alterações, cria uma descrição detalhada
             descricaoLog = `Alterou a despesa "${despesaAntiga.fornecedor}" (ID: ${id}): ${alteracoes.join(', ')}`;
         }
         else {
-            // Se não houver alterações nos campos monitorados, mantém uma mensagem genérica
             descricaoLog = `Revisou/salvou a despesa "${despesaAntiga.fornecedor}" (ID: ${id}) sem alterações significativas`;
         }
         const usuarioIdLog = req.usuario.id;
         yield registrarLog(descricaoLog, usuarioIdLog, id);
-        // LÓGICA DE CRIAÇÃO AUTOMÁTICA DA PRÓXIMA FATURA RECORRENTE
+        // Lógica de Negócio (após pagamento)
         const foiPagaAgora = despesaAntiga.status === 'Pendente' && dadosAtualizados.status === 'Pago';
-        const ehRecorrente = dadosAtualizados.periodicidade === 'Mensal' || dadosAtualizados.periodicidade === 'Anual';
-        if (foiPagaAgora && ehRecorrente) {
-            const proximaData = new Date(dadosAtualizados.vencimento + 'T03:00:00');
-            if (dadosAtualizados.periodicidade === 'Mensal') {
-                proximaData.setMonth(proximaData.getMonth() + 1);
+        if (foiPagaAgora) {
+            // Lógica de Notificação de Valor Fixo
+            if (despesaAntiga.tem_valor_fixo && parseFloat(despesaAntiga.valor_fixo) !== parseFloat(dadosAtualizados.valor)) {
+                const sqlUsuarios = "SELECT email, nome FROM usuarios WHERE papel IN ('editor', 'mestre')";
+                const destinatarios = yield conn.query(sqlUsuarios);
+                if (destinatarios.length > 0) {
+                    const listaEmails = destinatarios.map((user) => user.email);
+                    const htmlEmail = `
+                        <h1>Alerta de Alteração de Valor Fixo</h1>
+                        <p>Olá,</p>
+                        <p>A despesa <strong>"${dadosAtualizados.fornecedor}"</strong> foi marcada como paga com um valor diferente do valor fixo registrado.</p>
+                        <ul>
+                            <li>Valor Fixo Esperado: <strong>${Number(despesaAntiga.valor_fixo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></li>
+                            <li>Valor Efetivamente Pago: <strong>${Number(dadosAtualizados.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></li>
+                        </ul>
+                        <p>A alteração foi realizada pelo usuário: <strong>${req.usuario.nome}</strong>.</p>
+                        <p>Esta é uma notificação automática para fins de auditoria.</p>
+                    `;
+                    yield transporter.sendMail({
+                        from: `"Controle de Despesas" <${process.env.EMAIL_USER}>`,
+                        bcc: listaEmails.join(','),
+                        subject: `Alerta: Valor da despesa "${dadosAtualizados.fornecedor}" foi alterado`,
+                        html: htmlEmail,
+                    });
+                    console.log('E-mail de alerta de valor fixo enviado com sucesso.');
+                }
             }
-            else { // Anual
-                proximaData.setFullYear(proximaData.getFullYear() + 1);
+            // Lógica de Criação de Próxima Fatura Recorrente
+            const ehRecorrente = despesaAntiga.periodicidade === 'Mensal' || despesaAntiga.periodicidade === 'Anual';
+            if (ehRecorrente) {
+                const proximaData = new Date(dadosAtualizados.vencimento + 'T03:00:00');
+                if (dadosAtualizados.periodicidade === 'Mensal') {
+                    proximaData.setMonth(proximaData.getMonth() + 1);
+                }
+                else { // Anual
+                    proximaData.setFullYear(proximaData.getFullYear() + 1);
+                }
+                const proximoVencimento = proximaData.toISOString().split('T')[0];
+                const fornecedorBase = despesaAntiga.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim();
+                const sqlInsertProxima = `
+                    INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status, tem_valor_fixo, valor_fixo) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+                const paramsInsertProxima = [
+                    fornecedorBase,
+                    despesaAntiga.valor,
+                    proximoVencimento, despesaAntiga.categoria, despesaAntiga.periodicidade,
+                    '', 'Pendente', 'Pendente', 'Pendente',
+                    despesaAntiga.tem_valor_fixo, despesaAntiga.valor_fixo
+                ];
+                yield conn.query(sqlInsertProxima, paramsInsertProxima);
+                console.log('Próxima fatura recorrente criada com sucesso!');
             }
-            const proximoVencimento = proximaData.toISOString().split('T')[0];
-            const sqlInsertProxima = `
-                INSERT INTO despesas (fornecedor, valor, vencimento, categoria, periodicidade, notaFiscal, situacaoFinanceiro, situacaoFiscal, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-            const paramsInsertProxima = [
-                dadosAtualizados.fornecedor, dadosAtualizados.valor, proximoVencimento, dadosAtualizados.categoria, dadosAtualizados.periodicidade,
-                '', 'Pendente', 'Pendente', 'Pendente'
-            ];
-            yield conn.query(sqlInsertProxima, paramsInsertProxima);
-            console.log('Próxima fatura recorrente criada com sucesso!');
         }
         res.status(200).json(Object.assign({ id: parseInt(id) }, dadosAtualizados));
     }
@@ -517,14 +685,23 @@ app.delete('/api/despesas/:id', authMiddleware_1.verificarToken, (0, authMiddlew
     let conn;
     try {
         conn = yield pool.getConnection();
+        // 1. Busca o nome da despesa ANTES de deletar, para usar no log.
+        const [despesaParaExcluir] = yield conn.query("SELECT fornecedor FROM despesas WHERE id = ?", [id]);
+        if (!despesaParaExcluir) {
+            return res.status(404).json({ error: 'Despesa não encontrada para exclusão.' });
+        }
+        const nomeDespesaExcluida = despesaParaExcluir.fornecedor;
+        // 2. Deleta a despesa do banco de dados.
         const sql = "DELETE FROM despesas WHERE id = ?";
         const result = yield conn.query(sql, [id]);
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Despesa não encontrada.' });
+            // Não deve acontecer por causa da verificação acima, mas é uma segurança extra.
+            return res.status(404).json({ error: 'Falha ao excluir a despesa.' });
         }
         const usuarioIdLog = req.usuario.id;
-        // Para o log de exclusão, podemos passar o ID da despesa que foi excluída.
-        yield registrarLog(`Excluiu a despesa ID ${id}`, usuarioIdLog, id);
+        // 3. Registra o log com o nome da despesa que foi guardado.
+        const descricaoLog = `Excluiu a despesa "${nomeDespesaExcluida}" (ID: ${id})`;
+        yield registrarLog(descricaoLog, usuarioIdLog, null);
         res.status(204).send();
     }
     catch (err) {
@@ -594,7 +771,7 @@ app.get('/api/usuarios', authMiddleware_1.verificarToken, (0, authMiddleware_1.v
     }
 }));
 // Endpoint para LOGIN de usuário
-app.post('/api/auth/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post('/api/auth/login', authLimiter, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, senha } = req.body;
     if (!email || !senha) {
         return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });

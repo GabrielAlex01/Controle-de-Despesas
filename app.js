@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 console.log("app.ts foi carregado e está sendo executado.");
-// onstantes Globais ---
+// Constantes Globais 
 const API_BASE_URL = 'http://localhost:3000/api';
 let meuGrafico = null;
 let graficoRelatorio = null;
@@ -20,6 +20,7 @@ let idUsuarioParaExcluir = null;
 let logsPaginaAtual = 1;
 const LOGS_POR_PAGINA = 20;
 let usuarioLogado = null;
+
 // Seletores de Elementos do DOM
 const loginContainer = document.getElementById('login-container');
 const appContainer = document.getElementById('app-container');
@@ -92,9 +93,9 @@ const btnLogsAnterior = document.getElementById('btn-logs-anterior');
 const btnLogsProximo = document.getElementById('btn-logs-proximo');
 const logsPaginacaoInfo = document.getElementById('logs-paginacao-info');
 const forgotPasswordLink = document.getElementById('forgot-password-link');
-console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink); // <-- Adicionar aqui
+console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink); 
 const modalForgotPasswordContainer = document.getElementById('modal-forgot-password-container');
-console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer); // <-- E aqui
+console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer); 
 const formForgotPassword = document.getElementById('form-forgot-password');
 const forgotEmailInput = document.getElementById('forgot-email');
 const btnForgotCancelar = document.getElementById('btn-forgot-cancelar');
@@ -106,6 +107,7 @@ const btnRelatorioFechar = document.getElementById('btn-relatorio-fechar');
 const temValorFixoCheckbox = document.getElementById('tem-valor-fixo');
 const containerValorFixo = document.getElementById('container-valor-fixo');
 const valorFixoInput = document.getElementById('valor-fixo');
+
 // Seções principais da tela de despesas
 const secoesPrincipais = [
     document.getElementById('resumo-container'),
