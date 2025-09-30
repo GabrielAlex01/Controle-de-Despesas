@@ -290,7 +290,7 @@ Acesse o MariaDB com o usuário `root` :
       npm install
     ```
     
-4. Crie e configure o arquivo `.env`:
+4. Crie o arquivo `.env`:
     ```bash
       nano .env
     ```
