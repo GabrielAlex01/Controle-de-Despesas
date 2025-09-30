@@ -31,7 +31,7 @@ const apiLimiter = rateLimit({
 // Limitador Estrito para rotas de autenticação (previne força bruta)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // Janela de 15 minutos
-    max: 10, // Limita cada IP a 5 requisições de autenticação por janela
+    max: 10, // Limita cada IP a 10 requisições de autenticação por janela
     message: { error: 'Muitas tentativas de login ou de alteração de senha a partir deste IP. Por favor, tente novamente após 15 minutos.' },
 });
 

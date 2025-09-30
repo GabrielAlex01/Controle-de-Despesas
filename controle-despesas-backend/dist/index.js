@@ -42,7 +42,7 @@ const apiLimiter = (0, express_rate_limit_1.default)({
 // Limitador Estrito para rotas de autenticação (previne força bruta)
 const authLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // Janela de 15 minutos
-    max: 10, // Limita cada IP a 5 requisições de autenticação por janela
+    max: 10, // Limita cada IP a 10 requisições de autenticação por janela
     message: { error: 'Muitas tentativas de login ou de alteração de senha a partir deste IP. Por favor, tente novamente após 15 minutos.' },
 });
 // Nodemailer - Agendamento diário às 8h para verificar contas a vencer
