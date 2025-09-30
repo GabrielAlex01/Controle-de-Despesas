@@ -241,7 +241,7 @@ Acesse o MariaDB com o usuário `root` :
        sudo mariadb
     ```
 Dentro do console do MariaDB, cole o bloco de código abaixo inteiro e pressione Enter. Ele criará o banco de dados e todas as tabelas.
-    ```bash
+```sql
       CREATE DATABASE IF NOT EXISTS controle_despesas;
       USE controle_despesas;
 
@@ -270,7 +270,7 @@ Dentro do console do MariaDB, cole o bloco de código abaixo inteiro e pressione
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
       EXIT;
-    ```
+```
     
 ### Passo 3: Clonar e Configurar a Aplicação
 
@@ -324,7 +324,7 @@ Pressione Ctrl+X, depois Y e Enter para salvar e sair.
    ```bash
       npm run dev
     ```
-O servidor começará a rodar em http://localhost:3000. Deixe este terminal aberto.
+   O servidor começará a rodar em http://localhost:3000. Deixe este terminal aberto.
 
 2. Front-end: Navegue até a pasta raiz do projeto `(Controle-de-Despesas)` no seu gerenciador de arquivos e dê um duplo clique no arquivo `index.html`.
 
