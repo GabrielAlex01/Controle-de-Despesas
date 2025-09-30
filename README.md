@@ -275,7 +275,7 @@ Acesse o MariaDB com o usuário `root` :
     
 ### Passo 3: Clonar e Configurar a Aplicação
 
-1.  Atualize o Gerenciador de Pacotes:
+1.  Clone o projeto do seu GitHub para uma pasta de sua preferência.
     ```bash
       git clone https://github.com/GabrielAlex01/Controle-de-Despesas.git
     ```
@@ -313,7 +313,7 @@ Pressione Ctrl+X, depois Y e Enter para salvar e sair.
     
 2. Digite a senha que você quer usar para o admin e copie o hash que será gerado.
 
-3. Acesse o MariaDB novamente (sudo mariadb) e execute o comando INSERT, colando o seu hash.
+3. Acesse o MariaDB novamente `sudo mariadb` e execute o comando INSERT, colando o seu hash.
    ```bash
       INSERT INTO controle_despesas.usuarios (nome, email, senha_hash, papel) VALUES ('Admin', 'admin@empresa.com', 'COLE_O_SEU_HASH_GERADO_AQUI', 'mestre');
       EXIT;
