@@ -25,8 +25,10 @@ A aplicação permite o controle detalhado de despesas fixas, serviços e gastos
 * **Recuperação de Senha Segura:** Fluxo completo de "esqueci a senha" com tokens de uso único e tempo de expiração enviados por e-mail.
 * **Relatórios Individuais de Despesas:** Análise de tendência histórica para cada despesa, com gráfico de evolução de valores pagos ao longo do tempo.
 * **Auditoria e Logs:** Registro detalhado de todas as ações importantes (criação, alteração, exclusão) com informação de qual usuário realizou a ação, quando, e o que foi alterado.
-* **Notificações por E-mail:** Serviço automatizado que verifica diariamente as contas a vencer e envia e-mails de alerta para os usuários responsáveis.
-* Notificações instantâneas para administradores sobre alterações em despesas de valor fixo.
+* **Notificações por E-mail:** 
+    * Serviço automatizado que verifica diariamente as contas a vencer e envia e-mails de alerta para os usuários responsáveis.
+    * Notificações instantâneas para administradores sobre alterações em despesas de valor fixo.
+* **Prevenção de Ataques de Força Bruta e DDoS com Rate Limiting:** Utilizando a biblioteca express-rate-limit, a API implementa um controle de taxa de requisições. Há um limite geral para todas as rotas, mitigando ataques de negação de serviço. Além disso, um limite muito mais estrito é aplicado aos endpoints de autenticação (login, recuperação de senha, etc.), tornando ataques de força bruta para adivinhar senhas praticamente inviáveis.
 
 ## 🛡️ Foco em Cibersegurança
 
