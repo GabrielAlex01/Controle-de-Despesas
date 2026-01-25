@@ -3,11 +3,11 @@
 
 ![Status do Projeto](https://img.shields.io/badge/status-concluído-green)
 ![Licença](https://img.shields.io/badge/license-MIT-blue)
-![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
-![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
-![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
+![NodeJS](https://img.shields.io/badge/node.js-6DA55F)
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg)
+![MariaDB](https://img.shields.io/badge/MariaDB-003545)
+![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg)
+![JWT](https://img.shields.io/badge/JWT-black)
 
 ## 📖 Sobre o Projeto
 
