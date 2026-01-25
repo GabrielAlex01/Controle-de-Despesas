@@ -1,13 +1,37 @@
 # Sistema de Controle de Despesas
+> Uma solução Full-Stack para automação financeira com foco em governança, auditoria e cibersegurança.
 
 ![Status do Projeto](https://img.shields.io/badge/status-concluído-green)
 ![Licença](https://img.shields.io/badge/license-MIT-blue)
+![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
+![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
 
 ## 📖 Sobre o Projeto
 
-O **Sistema de Controle de Despesas** é uma aplicação Full Stack desenvolvida para automatizar e otimizar o gerenciamento de contas e faturas do departamento de T.I. O projeto nasceu da necessidade de substituir um processo manual e suscetível a erros, baseado em planilhas de Excel, por uma solução centralizada, segura e inteligente.
+O **Sistema de Controle de Despesas** é uma aplicação Full Stack desenvolvida para automatizar e otimizar o gerenciamento de contas e faturas do departamento de T.I. O projeto nasceu da necessidade de substituir um processo manual e suscetível a erros, baseado em planilhas de Excel, por um sistema com integridade de dados garantida por chaves estrangeiras e transações SQL.
 
 A aplicação permite o controle detalhado de despesas fixas, serviços e gastos extras, com um sistema de autenticação robusto e controle de acesso baseado em papéis, além de funcionalidades de automação e visualização de dados.
+
+## 📂 Estrutura do Projeto
+
+A aplicação foi reestruturada para separar claramente as responsabilidades de cliente e servidor, facilitando a manutenção e o escalonamento.
+
+```text
+/Controle-de-Despesas
+├── /backend              # Servidor Node.js (API REST)
+│   ├── /src              # Código-fonte em TypeScript
+│   ├── /dist             # Código compilado em JavaScript
+│   ├── .env              # Variáveis de ambiente (sensível)
+│   └── package.json
+├── /frontend             # Interface do Usuário (SPA)
+│   ├── index.html        # Estrutura principal
+│   ├── style.css         # Estilização
+│   └── app.ts            # Lógica de consumo da API
+└── README.md
+```
 
 ## ✨ Funcionalidades Principais
 
@@ -37,12 +61,15 @@ A segurança foi um pilar central no desenvolvimento da aplicação. As seguinte
 * **Criptografia de Senhas com `bcrypt`:** As senhas dos usuários nunca são armazenadas em texto puro. Utilizamos o algoritmo `bcrypt`, o padrão da indústria, para gerar um *hash* seguro e com "sal" de cada senha, que é o que fica armazenado no banco de dados. A verificação no login é feita comparando o hash da senha fornecida com o hash armazenado, sem nunca expor a senha original.
 * **Tokens Seguros para Redefinição de Senha:** O sistema de "esqueci a senha" utiliza tokens criptograficamente seguros (crypto), de uso único e com tempo de expiração, para validar a identidade do usuário antes de permitir a alteração da senha.
 * **Autenticação via Token JWT (JSON Web Token):** Após o login, o usuário recebe um token JWT assinado digitalmente com o segredo do servidor. Para cada requisição a endpoints protegidos, este token deve ser enviado, provando a identidade do usuário.
+* **Princípio do Menor Privilégio (RBAC)**: Controle de acesso baseado em funções (Mestre, Editor, Visualizador), garantindo que usuários possuam apenas as permissões estritamente necessárias para suas funções.
 * **Middlewares de Segurança em Camadas:** O acesso aos endpoints da API é controlado por uma cadeia de middlewares que funcionam como "porteiros" sequenciais:
     1.  **`verificarToken` (Autenticação):** O primeiro porteiro verifica se um token JWT válido foi enviado no cabeçalho da requisição. Se o token não existir, for inválido ou tiver expirado, o acesso é imediatamente bloqueado.
     2.  **`verificarPapel` (Autorização):** Uma vez que a identidade do usuário é confirmada, o segundo porteiro verifica seu "cargo" (`papel`: mestre, editor, etc.). Cada endpoint crítico possui uma lista de papéis autorizados, e se o usuário não tiver o cargo necessário, seu acesso é bloqueado com uma mensagem de "permissão negada".
 * **Prevenção de SQL Injection:** Todas as interações com o banco de dados MariaDB são realizadas através de **consultas parametrizadas**. Isso impede que dados maliciosos inseridos por um usuário sejam executados como comandos SQL, neutralizando um dos vetores de ataque mais comuns e perigosos.
 * **Regras de Negócio Seguras:** Foram implementadas lógicas no back-end para prevenir ações que poderiam comprometer o sistema, como impedir que um usuário `mestre` possa excluir ou rebaixar a si mesmo, garantindo a continuidade da administração da ferramenta.
 * **Prevenção de Ataques de Força Bruta e DDoS com Rate Limiting:** Utilizando a biblioteca express-rate-limit, ela implementa um controle de taxa de requisições. Há um limite geral para todas as rotas, mitigando ataques de negação de serviço. Além disso, um limite muito mais estrito é aplicado aos endpoints de autenticação (login, recuperação de senha, etc.), tornando ataques de força bruta para adivinhar senhas praticamente inviáveis.
+* **Política Fail-Safe de Segredos**: O backend implementa uma verificação crítica na inicialização; caso as variáveis de ambiente (como `JWT_SECRET`) não sejam detectadas, o servidor recusa a execução para evitar estados vulneráveis.
+* **Trilha de Auditoria Imutável (Audit Trail)**: Sistema de logs robusto que registra o "quem, quando e o quê" de cada alteração no sistema. Para garantir a integridade, logs de usuários deletados são preservados com identificação histórica.
 
 ## 🛠️ Tecnologias Utilizadas
 
