@@ -625,6 +625,17 @@ function renderizarTabelas() {
     tabelaDespesasExtrasBody.innerHTML = '';
     const mesSelecionado = filtroMesSelect.value; // ex: "1" ou "todos"
     const anoSelecionado = filtroAnoInput.value; // ex: "2026"
+    const labelTotalGeral = document.querySelector('.total-geral h4');
+    if (labelTotalGeral) {
+        if (mesSelecionado === 'todos') {
+            // Se estiver filtrando todos os meses, muda o texto para Ano
+            labelTotalGeral.innerText = 'Total Geral do Ano';
+        }
+        else {
+            // Caso contrário, mantém como Mês
+            labelTotalGeral.innerText = 'Total Geral do Mês';
+        }
+    }
     // --- 1. LÓGICA VISUAL (O que aparece nas linhas da tabela) ---
     let despesasParaTabela = despesas.filter(despesa => {
         const dataDespesa = new Date(despesa.vencimento);
