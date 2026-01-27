@@ -670,100 +670,123 @@ function inicializarApp() {
 }
 
 // Função para renderizar as tabelas de despesas
+// Função para renderizar as tabelas de despesas (CORRIGIDA: SOMA APENAS PAGOS)
 function renderizarTabelas() {
     tabelaComercialBody.innerHTML = '';
     tabelaServicosBody.innerHTML = '';
     tabelaDespesasExtrasBody.innerHTML = '';
 
-    const mesSelecionado = filtroMesSelect.value; // ex: "1"
+    const mesSelecionado = filtroMesSelect.value; // ex: "1" ou "todos"
     const anoSelecionado = filtroAnoInput.value;   // ex: "2026"
 
-    let despesasFiltradas = despesas.filter(despesa => {
+    // --- 1. LÓGICA VISUAL (O que aparece nas linhas da tabela) ---
+    let despesasParaTabela = despesas.filter(despesa => {
         const dataDespesa = new Date(despesa.vencimento);
-
-        // Usar UTC é essencial para campos vindos de inputs do tipo date
         const mesDaDespesa = dataDespesa.getUTCMonth() + 1;
         const anoDaDespesa = dataDespesa.getUTCFullYear();
 
-        // Compara convertendo ambos para string para não ter erro de tipo
         const filtroMesOk = mesSelecionado === 'todos' || mesDaDespesa.toString() === mesSelecionado;
         const filtroAnoOk = anoSelecionado === '' || anoDaDespesa.toString() === anoSelecionado;
 
         return filtroMesOk && filtroAnoOk;
     });
-    // Lógica de Agrupamento para "Todos os Meses" 
+
+    // Agrupamento visual para "Todos os Meses"
     if (mesSelecionado === 'todos') {
         const agrupadas: { [key: string]: Despesa } = {};
 
-        despesasFiltradas.forEach(d => {
-            // Remove "(Parcela X/Y)" ou "(Recorrente)" para identificar o nome base
+        despesasParaTabela.forEach(d => {
             const nomeBase = d.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim();
-
-            // Se ainda não temos essa despesa no grupo, ou se esta é mais recente/pendente, mantemos ela
+            // Prioriza mostrar o item pendente ou o primeiro encontrado
             if (!agrupadas[nomeBase] || (agrupadas[nomeBase].status === 'Pago' && d.status === 'Pendente')) {
                 agrupadas[nomeBase] = d;
             }
         });
-
-        despesasFiltradas = Object.keys(agrupadas).map(key => agrupadas[key]);
+        despesasParaTabela = Object.keys(agrupadas).map(key => agrupadas[key]);
     }
-    despesasFiltradas.sort((a, b) => {
+
+    // Ordenação
+    despesasParaTabela.sort((a, b) => {
         if (a.status === 'Pendente' && b.status !== 'Pendente') return -1;
         if (a.status !== 'Pendente' && b.status === 'Pendente') return 1;
         return 0;
     });
-    despesasFiltradas.forEach(despesa => {
+
+    // Renderização das Linhas (HTML)
+    despesasParaTabela.forEach(despesa => {
         const tr = document.createElement('tr');
         tr.className = `status-${despesa.status?.toLowerCase() || 'pendente'}`;
         tr.dataset.id = despesa.id.toString();
 
         const nomeExibicao = mesSelecionado === 'todos'
-            ? despesa.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim()
+            ? despesa.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim() + ' (Agrupado)'
             : despesa.fornecedor;
             
-        let botoesAcaoHtml = ''; // Começa sem botões
+        let botoesAcaoHtml = '';
         if (usuarioLogado && (usuarioLogado.papel === 'editor' || usuarioLogado.papel === 'mestre')) {
             botoesAcaoHtml = `
-        <button class="btn-editar">Editar</button>
-        <button class="btn-excluir">Excluir</button>
-        <button class="btn-relatorio">Relatório</button> `;
+                <button class="btn-editar">Editar</button>
+                <button class="btn-excluir">Excluir</button>
+                <button class="btn-relatorio">Relatório</button> `;
         } else {
-            botoesAcaoHtml = `<button class="btn-relatorio">Relatório</button>`; // Visualizador só vê o relatório
+            botoesAcaoHtml = `<button class="btn-relatorio">Relatório</button>`;
         }
+
         const valorFormatado = Number(despesa.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const dataFormatada = new Date(despesa.vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+
         tr.innerHTML = `
-            <td>${despesa.fornecedor}</td>
+            <td>${nomeExibicao}</td>
             <td>${valorFormatado}</td>
-            <td>${dataFormatada}</td>
+            <td>${mesSelecionado === 'todos' ? '---' : dataFormatada}</td>
             <td>${despesa.periodicidade}</td>
             <td>${despesa.notaFiscal || '--'}</td>
             <td>${despesa.situacaoFinanceiro}</td>
             <td>${despesa.situacaoFiscal}</td>
-            <td>
-                ${botoesAcaoHtml}
-            </td>
+            <td>${botoesAcaoHtml}</td>
         `;
+
         switch (despesa.categoria) {
             case 'comercial': tabelaComercialBody.appendChild(tr); break;
             case 'servicos': tabelaServicosBody.appendChild(tr); break;
             case 'despesas-extras': tabelaDespesasExtrasBody.appendChild(tr); break;
         }
     });
+
+    // --- 2. LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos) ---
+    // Aqui usamos a lista ORIGINAL "despesas", não a agrupada, para somar tudo corretamente.
     let totalComercial = 0, totalServicos = 0, totalDespesasExtras = 0;
-    despesasFiltradas.forEach(despesa => {
-        switch (despesa.categoria) {
-            case 'comercial': totalComercial += Number(despesa.valor); break;
-            case 'servicos': totalServicos += Number(despesa.valor); break;
-            case 'despesas-extras': totalDespesasExtras += Number(despesa.valor); break;
+
+    despesas.forEach(d => {
+        const data = new Date(d.vencimento);
+        const mes = data.getUTCMonth() + 1;
+        const ano = data.getUTCFullYear();
+
+        // Verifica filtros de data
+        const filtroMesOk = mesSelecionado === 'todos' || mes.toString() === mesSelecionado;
+        const filtroAnoOk = anoSelecionado === '' || ano.toString() === anoSelecionado;
+        
+        // Verifica se está PAGO (Regra Solicitada)
+        const estaPago = d.status === 'Pago';
+
+        if (filtroMesOk && filtroAnoOk && estaPago) {
+            switch (d.categoria) {
+                case 'comercial': totalComercial += Number(d.valor); break;
+                case 'servicos': totalServicos += Number(d.valor); break;
+                case 'despesas-extras': totalDespesasExtras += Number(d.valor); break;
+            }
         }
     });
+
+    // Atualiza os Cards
     const totalGeral = totalComercial + totalServicos + totalDespesasExtras;
     const formatarMoeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    
     totalComercialSpan.innerText = formatarMoeda(totalComercial);
     totalServicosSpan.innerText = formatarMoeda(totalServicos);
     totalDespesasExtrasSpan.innerText = formatarMoeda(totalDespesasExtras);
     totalGeralSpan.innerText = formatarMoeda(totalGeral);
+
     renderizarGrafico();
 }
 
