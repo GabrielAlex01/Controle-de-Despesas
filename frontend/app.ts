@@ -1,4 +1,3 @@
-
 console.log("app.ts foi carregado e está sendo executado.");
 // Constantes Globais 
 const API_BASE_URL = 'http://localhost:3000/api';
@@ -16,8 +15,8 @@ interface Despesa {
     situacaoFiscal: 'Pendente' | 'Entregue';
     status: 'Pendente' | 'Pago';
     total_parcelas?: number;
-    tem_valor_fixo?: boolean; 
-    valor_fixo?: number;    
+    tem_valor_fixo?: boolean;
+    valor_fixo?: number;
 }
 
 // Interface para o usuário logado
@@ -113,9 +112,9 @@ const btnLogsAnterior = document.getElementById('btn-logs-anterior') as HTMLButt
 const btnLogsProximo = document.getElementById('btn-logs-proximo') as HTMLButtonElement;
 const logsPaginacaoInfo = document.getElementById('logs-paginacao-info') as HTMLSpanElement;
 const forgotPasswordLink = document.getElementById('forgot-password-link') as HTMLAnchorElement;
-console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink); 
+console.log('Elemento do link "Esqueci a senha":', forgotPasswordLink);
 const modalForgotPasswordContainer = document.getElementById('modal-forgot-password-container') as HTMLDivElement;
-console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer); 
+console.log('Elemento do modal "Esqueci a senha":', modalForgotPasswordContainer);
 const formForgotPassword = document.getElementById('form-forgot-password') as HTMLFormElement;
 const forgotEmailInput = document.getElementById('forgot-email') as HTMLInputElement;
 const btnForgotCancelar = document.getElementById('btn-forgot-cancelar') as HTMLButtonElement;
@@ -137,6 +136,40 @@ const secoesPrincipais = [
     document.getElementById('despesas-extras'),
     document.getElementById('grafico-container')
 ];
+
+// Lógica de Tema (Dark Mode)
+const btnTema = document.getElementById('btn-tema') as HTMLButtonElement;
+
+function alternarTema() {
+    const body = document.body;
+    const isDark = body.classList.toggle('dark-mode');
+    
+    // Atualiza ícone
+    btnTema.innerText = isDark ? '☀️' : '🌙';
+    
+    // Salva preferência
+    localStorage.setItem('temaPreferido', isDark ? 'escuro' : 'claro');
+}
+
+function carregarTemaInicial() {
+    const temaSalvo = localStorage.getItem('temaPreferido');
+    // Se salvou escuro OU se não tem salvo mas o sistema do PC é escuro
+    const prefereEscuro = temaSalvo === 'escuro' || 
+                          (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    if (prefereEscuro) {
+        document.body.classList.add('dark-mode');
+        if (btnTema) btnTema.innerText = '☀️';
+    } else {
+        document.body.classList.remove('dark-mode');
+        if (btnTema) btnTema.innerText = '🌙';
+    }
+}
+
+// Ativa o botão
+if (btnTema) {
+    btnTema.addEventListener('click', alternarTema);
+}
 
 // Função para buscar os dados do relatório no back-end
 async function fetchRelatorioData(fornecedor: string) {
@@ -274,6 +307,9 @@ async function handleLogin(event: SubmitEvent) {
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('usuarioLogado', JSON.stringify(data));
         usuarioLogado = data;
+
+        configurarFiltrosParaDataAtual();
+
         mostrarTelaApp();
         atualizarUIComPermissoes();
         await carregarDespesasDoBackend();
@@ -327,7 +363,7 @@ async function carregarUsuariosDoBackend() {
         usuarios.forEach((usuario: Usuario) => {
             const tr = document.createElement('tr');
 
-            // --- LÓGICA PARA OS BOTÕES DE AÇÃO ---
+            // LÓGICA PARA OS BOTÕES DE AÇÃO 
             let botoesAcao = '';
             const ehUsuarioLogado = usuarioLogado && usuario.id === usuarioLogado.id;
 
@@ -393,9 +429,53 @@ async function carregarLogsDoBackend(pagina = 1) {
     }
 }
 
+function setCarregando(botao: HTMLButtonElement, carregando: boolean, textoOriginal: string = 'Salvar') {
+    if (carregando) {
+        botao.disabled = true;
+        // Adiciona um spinner simples via texto ou HTML
+        botao.innerHTML = '⏳ Processando...'; 
+        botao.style.opacity = '0.7';
+        botao.style.cursor = 'wait';
+    } else {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        botao.style.opacity = '1';
+        botao.style.cursor = 'pointer';
+    }
+}
+
+function mostrarToast(mensagem: string, tipo: 'sucesso' | 'erro' | 'info' = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${tipo}`;
+    
+    // Ícones simples para dar um tcham
+    let icone = '';
+    if (tipo === 'sucesso') icone = '✅';
+    if (tipo === 'erro') icone = '❌';
+    if (tipo === 'info') icone = 'ℹ️';
+
+    toast.innerHTML = `${icone} &nbsp; ${mensagem}`;
+
+    container.appendChild(toast);
+
+    // Remove o toast automaticamente após 3 segundos
+    setTimeout(() => {
+        toast.classList.add('hiding'); // Ativa a animação de saída no CSS
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 3000);
+}
+
 // LÓGICA DE FORMULÁRIOS E MODAIS
 async function handleFormSubmit(event: SubmitEvent) {
     event.preventDefault();
+
+    // 1. Captura o botão de salvar dentro deste formulário específico
+    const btnSalvar = formDespesa.querySelector('button[type="submit"]') as HTMLButtonElement;
 
     const dadosForm: any = {
         fornecedor: fornecedorInput.value,
@@ -415,8 +495,7 @@ async function handleFormSubmit(event: SubmitEvent) {
         dadosForm.numero_parcelas = parseInt(numeroParcelasInput.value, 10);
         dadosForm.total_parcelas = parseInt(numeroParcelasInput.value, 10);
     }
-    
-    // CAPTURAMOS O ID DE EDIÇÃO NUMA VARIÁVEL LOCAL
+
     const idParaSalvar = idEmEdicao;
 
     // Lógica de confirmação de valor fixo
@@ -427,19 +506,17 @@ async function handleFormSubmit(event: SubmitEvent) {
             const valorFixo = Number(despesaOriginal.valor_fixo);
             if (valorPago !== valorFixo) {
                 const confirmou = confirm(
-                    'ATENÇÃO: O valor pago (R$ ' + valorPago.toFixed(2) +
-                    ') é diferente do valor fixo cadastrado (R$ ' + valorFixo.toFixed(2) +
-                    ').\n\nDeseja continuar? Uma notificação será enviada aos administradores.'
+                    'ATENÇÃO: O valor pago é diferente do valor fixo.\nDeseja continuar?'
                 );
-                if (!confirmou) {
-                    return; 
-                }
+                if (!confirmou) return;
             }
         }
     }
     
+    // ATIVA O LOADING
+    setCarregando(btnSalvar, true, 'Salvar');
+
     try {
-        fecharModal();
         let response;
         if (idParaSalvar !== null) {
             response = await fetchComToken(`${API_BASE_URL}/despesas/${idParaSalvar}`, {
@@ -452,17 +529,24 @@ async function handleFormSubmit(event: SubmitEvent) {
                 body: JSON.stringify(dadosForm),
             });
         }
+
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Falha ao salvar despesa.');
         }
 
-        // A atualização da tabela acontece em segundo plano, após o sucesso.
+        // SUCESSO: Mostra Toast e fecha modal
+        mostrarToast('Despesa salva com sucesso!', 'sucesso');
+        fecharModal();
         await carregarDespesasDoBackend();
 
     } catch (error: any) {
         console.error('Erro ao salvar despesa:', error);
-        alert(`Não foi possível salvar a despesa: ${error.message}`);
+        // ERRO: Mostra Toast vermelho
+        mostrarToast(`Erro: ${error.message}`, 'erro');
+    } finally {
+        // SEMPRE DESATIVA O LOADING (seja sucesso ou erro)
+        setCarregando(btnSalvar, false, 'Salvar');
     }
 }
 
@@ -536,14 +620,49 @@ function atualizarUIComPermissoes() {
     btnVerLogs.style.display = ehMestre ? 'inline-block' : 'none';
 }
 
+function configurarFiltrosParaDataAtual() {
+    const dataAtual = new Date();
+    const mesAtual = (dataAtual.getMonth() + 1).toString();
+    const anoAtual = dataAtual.getFullYear().toString();
+
+    const selectMes = document.getElementById('filtro-mes') as HTMLSelectElement;
+    const inputAno = document.getElementById('filtro-ano') as HTMLInputElement;
+
+    if (selectMes) selectMes.value = mesAtual;
+    if (inputAno) inputAno.value = anoAtual;
+
+    console.log(`Filtros definidos para: Mês ${mesAtual}, Ano ${anoAtual}`);
+}
+
 // Função para inicializar a aplicação
 function inicializarApp() {
+    // Pega a data de hoje: 26 de Janeiro de 2026
+    const dataAtual = new Date();
+    const mesAtual = (dataAtual.getMonth() + 1).toString();
+    const anoAtual = dataAtual.getFullYear().toString();
+
+    // FORÇA os valores nos elementos do DOM primeiro
+    const elMes = document.getElementById('filtro-mes') as HTMLSelectElement;
+    const elAno = document.getElementById('filtro-ano') as HTMLInputElement;
+
+    if (elMes) elMes.value = mesAtual;
+    if (elAno) elAno.value = anoAtual;
+
+    // ATUALIZA as variáveis globais para que a 'renderizarTabelas' não use lixo
+    (filtroMesSelect as any).value = mesAtual;
+    (filtroAnoInput as any).value = anoAtual;
+
+    console.log("Sistema sincronizado com a data atual.");
+
+    // Segue com o login
     const token = localStorage.getItem('authToken');
     const dadosUsuario = localStorage.getItem('usuarioLogado');
+
     if (token && dadosUsuario) {
         usuarioLogado = JSON.parse(dadosUsuario);
         mostrarTelaApp();
         atualizarUIComPermissoes();
+        // Aqui o carregar vai chamar o renderizar, que agora lerá 2026
         carregarDespesasDoBackend();
     } else {
         mostrarTelaLogin();
@@ -555,16 +674,39 @@ function renderizarTabelas() {
     tabelaComercialBody.innerHTML = '';
     tabelaServicosBody.innerHTML = '';
     tabelaDespesasExtrasBody.innerHTML = '';
-    const mesSelecionado = filtroMesSelect.value;
-    const anoSelecionado = filtroAnoInput.value;
-    const despesasFiltradas = despesas.filter(despesa => {
+
+    const mesSelecionado = filtroMesSelect.value; // ex: "1"
+    const anoSelecionado = filtroAnoInput.value;   // ex: "2026"
+
+    let despesasFiltradas = despesas.filter(despesa => {
         const dataDespesa = new Date(despesa.vencimento);
+
+        // Usar UTC é essencial para campos vindos de inputs do tipo date
         const mesDaDespesa = dataDespesa.getUTCMonth() + 1;
         const anoDaDespesa = dataDespesa.getUTCFullYear();
+
+        // Compara convertendo ambos para string para não ter erro de tipo
         const filtroMesOk = mesSelecionado === 'todos' || mesDaDespesa.toString() === mesSelecionado;
         const filtroAnoOk = anoSelecionado === '' || anoDaDespesa.toString() === anoSelecionado;
+
         return filtroMesOk && filtroAnoOk;
     });
+    // Lógica de Agrupamento para "Todos os Meses" 
+    if (mesSelecionado === 'todos') {
+        const agrupadas: { [key: string]: Despesa } = {};
+
+        despesasFiltradas.forEach(d => {
+            // Remove "(Parcela X/Y)" ou "(Recorrente)" para identificar o nome base
+            const nomeBase = d.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim();
+
+            // Se ainda não temos essa despesa no grupo, ou se esta é mais recente/pendente, mantemos ela
+            if (!agrupadas[nomeBase] || (agrupadas[nomeBase].status === 'Pago' && d.status === 'Pendente')) {
+                agrupadas[nomeBase] = d;
+            }
+        });
+
+        despesasFiltradas = Object.keys(agrupadas).map(key => agrupadas[key]);
+    }
     despesasFiltradas.sort((a, b) => {
         if (a.status === 'Pendente' && b.status !== 'Pendente') return -1;
         if (a.status !== 'Pendente' && b.status === 'Pendente') return 1;
@@ -574,6 +716,11 @@ function renderizarTabelas() {
         const tr = document.createElement('tr');
         tr.className = `status-${despesa.status?.toLowerCase() || 'pendente'}`;
         tr.dataset.id = despesa.id.toString();
+
+        const nomeExibicao = mesSelecionado === 'todos'
+            ? despesa.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim()
+            : despesa.fornecedor;
+            
         let botoesAcaoHtml = ''; // Começa sem botões
         if (usuarioLogado && (usuarioLogado.papel === 'editor' || usuarioLogado.papel === 'mestre')) {
             botoesAcaoHtml = `
@@ -623,6 +770,7 @@ function renderizarTabelas() {
 // Função para renderizar o gráfico de despesas
 function renderizarGrafico() {
     const anoSelecionado = parseInt(filtroAnoInput.value, 10);
+    if (isNaN(anoSelecionado)) return;
     const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const dadosComercial = new Array(12).fill(0);
     const dadosServicos = new Array(12).fill(0);
@@ -639,7 +787,7 @@ function renderizarGrafico() {
     if (!ctx) return;
     if (meuGrafico) meuGrafico.destroy();
     meuGrafico = new Chart(ctx, {
-        type: 'line', data: { labels: labels, datasets: [{ label: 'Comercial', data: dadosComercial, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 }, { label: 'Serviços', data: dadosServicos, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 }, { label: 'Desp. Extras', data: dadosExtras, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }] }, options: { responsive: true, plugins: { legend: { position: 'top' }, title: { display: true, text: `Evolução de Despesas - ${anoSelecionado}` } } }
+        type: 'line', data: { labels: labels, datasets: [{ label: 'Comercial', data: dadosComercial, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 }, { label: 'Serviços', data: dadosServicos, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 }, { label: 'Desp. Extras', data: dadosExtras, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: `Evolução de Despesas - ${anoSelecionado}` } } }
     });
 }
 
@@ -702,7 +850,7 @@ async function handleTabelasClick(event: MouseEvent) { // Adicionado async
         abrirModal(true, despesa);
     } else if (target.classList.contains('btn-excluir')) {
         excluirDespesa(id);
-    } else if (target.classList.contains('btn-relatorio')) { 
+    } else if (target.classList.contains('btn-relatorio')) {
         modalRelatorioContainer.classList.add('active');
         // Mostra um "carregando" enquanto busca os dados
         tabelaRelatorioBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
@@ -710,6 +858,7 @@ async function handleTabelasClick(event: MouseEvent) { // Adicionado async
         renderizarRelatorio(despesa.fornecedor, dadosRelatorio);
     }
 }
+
 tabelaComercialBody.addEventListener('click', handleTabelasClick);
 tabelaServicosBody.addEventListener('click', handleTabelasClick);
 tabelaDespesasExtrasBody.addEventListener('click', handleTabelasClick);
@@ -854,8 +1003,12 @@ btnExcluirUsuarioCancelar.addEventListener('click', () => {
     idUsuarioParaExcluir = null;
 });
 
+// Lógica de confirmação de exclusão de usuário (COM LOADING)
 btnExcluirUsuarioConfirmar.addEventListener('click', async () => {
     if (idUsuarioParaExcluir === null) return;
+
+    // 1. Ativa o Loading e trava o botão
+    setCarregando(btnExcluirUsuarioConfirmar, true, 'Confirmar Exclusão');
 
     try {
         const response = await fetchComToken(`${API_BASE_URL}/usuarios/${idUsuarioParaExcluir}`, {
@@ -867,15 +1020,21 @@ btnExcluirUsuarioConfirmar.addEventListener('click', async () => {
             throw new Error(errorData.error || 'Falha ao excluir usuário.');
         }
 
-        alert('Usuário excluído com sucesso!');
-        await carregarUsuariosDoBackend(); // Atualiza a lista
+        // 2. Sucesso: Toast verde + Atualizar lista
+        mostrarToast('Usuário excluído com sucesso!', 'sucesso');
+        await carregarUsuariosDoBackend(); 
+        
+        // Fecha o modal apenas se deu certo
+        modalExcluirUsuarioContainer.classList.remove('active');
+        idUsuarioParaExcluir = null;
 
     } catch (error: any) {
         console.error('Erro ao excluir usuário:', error);
-        alert(`Erro: ${error.message}`);
+        // 3. Erro: Toast vermelho (Não fecha o modal para a pessoa tentar de novo se quiser)
+        mostrarToast(`Erro: ${error.message}`, 'erro');
     } finally {
-        modalExcluirUsuarioContainer.classList.remove('active');
-        idUsuarioParaExcluir = null;
+        // 4. Sempre destrava o botão no final
+        setCarregando(btnExcluirUsuarioConfirmar, false, 'Confirmar Exclusão');
     }
 });
 
@@ -891,9 +1050,9 @@ btnLogsProximo.addEventListener('click', () => {
 });
 
 // Abre o modal de "esqueci a senha"
-console.log("Adicionando listener de clique ao link..."); // <-- Adicionar aqui
+console.log("Adicionando listener de clique ao link...");
 forgotPasswordLink.addEventListener('click', (e) => {
-    console.log("LINK FOI CLICADO!"); // <-- Adicionar aqui
+    console.log("LINK FOI CLICADO!");
     e.preventDefault();
     modalForgotPasswordContainer.classList.add('active');
 });
@@ -940,4 +1099,9 @@ temValorFixoCheckbox.addEventListener('change', () => {
         containerValorFixo.style.display = 'none';
         valorFixoInput.required = false;
     }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    carregarTemaInicial(); // Carrega o tema antes de tudo
+    inicializarApp();
 });

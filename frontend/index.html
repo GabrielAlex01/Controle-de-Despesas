@@ -54,6 +54,8 @@
                 <h1>Controle de Despesas</h1>
             </a>
             <div>
+                <button id="btn-tema" title="Alternar Tema">🌙</button>
+
                 <span id="usuario-logado"></span>
                 <button id="btn-alterar-senha">Alterar Senha</button>
                 <button id="btn-ver-logs" style="display: none;">Ver Logs</button>
@@ -145,7 +147,7 @@
                     <option value="11">Novembro</option>
                     <option value="12">Dezembro</option>
                 </select>
-                <input type="number" id="filtro-ano" placeholder="Ano" value="2025">
+                <input type="number" id="filtro-ano" placeholder="Ano" autocomplete="off">
             </div>
             <section id="comercial">
                 <h2>Comercial</h2>
@@ -215,7 +217,9 @@
 
             <section id="grafico-container">
                 <h2>Análise Mensal de Despesas</h2>
-                <canvas id="grafico-despesas"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="grafico-despesas"></canvas>
+                </div>
             </section>
 
         </main>
@@ -442,6 +446,7 @@
         </div>
 
     </div>
+    <div id="toast-container"></div>
     <script src="app.js" defer></script>
 </body>
 

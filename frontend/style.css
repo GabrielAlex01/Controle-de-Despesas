@@ -1,0 +1,699 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* 1. DEFINIÇÃO DE TEMAS (VARIÁVEIS CSS) */
+:root {
+    /* --- TEMA CLARO (Baseado no seu layout original) --- */
+    --bg-body: #F1F5F9;       /* Fundo cinza claro */
+    --bg-surface: #ffffff;    /* Fundo dos cartões/header */
+    --text-main: #1E293B;     /* Texto principal escuro */
+    --text-secondary: #475569;/* Texto secundário (labels) */
+    
+    --border-color: #E2E8F0;  /* Bordas sutis */
+    --input-bg: #F8FAFC;      /* Fundo de inputs */
+    --input-border: #CBD5E1;  /* Borda de inputs */
+
+    /* Cores da Marca */
+    --primary: #2563EB;       /* Azul Royal */
+    --primary-hover: #1D4ED8;
+    
+    /* Cores de Status/Ação */
+    --danger: #ef4444;
+    --danger-bg: #fee2e2;
+    --success: #10b981;
+    --success-bg: #ecfdf5;
+    
+    /* Sombras */
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode {
+    /* --- TEMA ESCURO (Azul Petróleo Profundo) --- */
+    --bg-body: #0F172A;        /* Slate 900 */
+    --bg-surface: #1E293B;     /* Slate 800 */
+    --text-main: #F8FAFC;      /* Branco Gelo */
+    --text-secondary: #94A3B8; /* Cinza Azulado */
+    
+    --border-color: #334155;   /* Bordas escuras */
+    --input-bg: #020617;       /* Input quase preto */
+    --input-border: #475569;
+
+    /* Cores da Marca (Ajustadas para brilhar no escuro) */
+    --primary: #3B82F6;        /* Azul mais claro */
+    --primary-hover: #60A5FA;
+    
+    /* Cores de Status/Ação (Translúcidas para não ofuscar) */
+    --danger: #f87171;
+    --danger-bg: rgba(239, 68, 68, 0.2);
+    --success: #34d399;
+    --success-bg: rgba(16, 185, 129, 0.2);
+    
+    /* Sombras */
+    --shadow-color: rgba(0, 0, 0, 0.5);
+}
+
+/* 2. RESET E BASE */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* Transição suave ao trocar de tema */
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/*  3. HEADER E NAVEGAÇÃO */
+header {
+    background-color: var(--bg-surface);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px 0 var(--shadow-color);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary); /* Ajustado para acompanhar o tema */
+    letter-spacing: -0.025em;
+}
+
+header div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+header a#btn-dashboard {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Botão de Tema (LUA/SOL) */
+#btn-tema {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+#btn-tema:hover {
+    background-color: var(--bg-body);
+    border-color: var(--primary);
+}
+
+/* Botões do Header */
+#btn-nova-despesa {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.2s, transform 0.1s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#btn-nova-despesa:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+#btn-logout {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+#btn-logout:hover {
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+#usuario-logado {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-right: 10px;
+}
+
+/* Botões Administrativos */
+#btn-gerenciar-usuarios, #btn-ver-logs, #btn-alterar-senha {
+    background-color: transparent; 
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+#btn-gerenciar-usuarios:hover, #btn-ver-logs:hover, #btn-alterar-senha:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* 4. LAYOUT PRINCIPAL E DASHBOARD */
+main {
+    padding: 2rem 3rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+#resumo-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    width: 100%; 
+}
+
+@media (max-width: 1024px) {
+    #resumo-container {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+}
+
+.resumo-card {
+    background-color: var(--bg-surface);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    text-align: center;
+    transition: transform 0.2s;
+    width: 100%; 
+}
+.resumo-card:hover {
+    transform: translateY(-3px);
+}
+
+.resumo-card h4 {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.resumo-card span {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text-main);
+    display: block;
+}
+
+.resumo-card.total-geral {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    border: none;
+}
+
+.resumo-card.total-geral h4 { color: rgba(255, 255, 255, 0.8); }
+.resumo-card.total-geral span { color: #ffffff; }
+
+/* 5. FILTROS E SEÇÕES */
+section {
+    background-color: var(--bg-surface);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 var(--shadow-color);
+    border: 1px solid var(--border-color);
+}
+
+section h2, .section-header h2 {
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
+    font-size: 1.25rem;
+    font-weight: 700;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+}
+
+.section-header h2 { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+.filters-container {
+    background-color: var(--bg-surface);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 var(--shadow-color);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.filters-container label {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* Estilo unificado para inputs e selects em toda a aplicação */
+select, input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"] {
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--input-border);
+    font-size: 0.95rem;
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+select:focus, input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filters-container input[type="number"] {
+    width: 100px;
+    text-align: center;
+}
+
+/* 6. TABELAS */
+.table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+thead th {
+    background-color: var(--input-bg);
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background-color: var(--bg-body); }
+
+/* Status Colors */
+tr.status-pago {
+    background-color: var(--success-bg);
+    border-left: 4px solid var(--success);
+}
+tr.status-pago:hover { background-color: var(--success-bg); opacity: 0.9; }
+
+tr.status-pendente {
+    background-color: var(--danger-bg);
+    border-left: 4px solid var(--danger);
+}
+tr.status-pendente:hover { background-color: var(--danger-bg); opacity: 0.9; }
+
+/* Botões da Tabela */
+.btn-editar, .btn-excluir, .btn-relatorio, .btn-editar-usuario, .btn-excluir-usuario {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 4px;
+    transition: all 0.2s;
+    display: inline-block;
+}
+
+.btn-editar, .btn-editar-usuario {
+    background-color: rgba(37, 99, 235, 0.1); /* Azul translúcido */
+    color: var(--primary);
+}
+.btn-editar:hover, .btn-editar-usuario:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-excluir, .btn-excluir-usuario {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+.btn-excluir:hover, .btn-excluir-usuario:hover {
+    background-color: var(--danger);
+    color: white;
+}
+
+.btn-relatorio {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+.btn-relatorio:hover {
+    background-color: var(--success);
+    color: white;
+}
+
+.btn-editar-usuario:disabled {
+    background-color: var(--bg-body);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+/* 7. MODAIS (Performance Otimizada: Sem Blur) */
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Fundo Escuro com Transparência (Sem Blur para performance máxima) */
+    background-color: rgba(15, 23, 42, 0.85); 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out, visibility 0.2s;
+}
+
+.modal-container.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+}
+
+.modal {
+    background-color: var(--bg-surface);
+    color: var(--text-main);
+    padding: 2.5rem;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 550px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); 
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--border-color); 
+    transform: translateY(20px);
+    transition: transform 0.2s ease-out;
+}
+
+.modal-container.active .modal {
+    transform: translateY(0);
+}
+
+.modal h3 {
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
+    font-size: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+/* Formulários */
+.form-group {
+    margin-bottom: 1.2rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.form-group input, .form-group select {
+    width: 100%; /* Garante largura total dentro do modal */
+}
+
+/* Checkbox estilizado */
+.form-group-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    padding: 10px;
+    background-color: var(--input-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.form-group-checkbox input {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+.form-group-checkbox label {
+    margin-bottom: 0;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.form-buttons {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.form-buttons button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: transform 0.1s;
+}
+
+.form-buttons button[type="submit"], #btn-papel-salvar, #btn-senha-salvar {
+    background-color: var(--primary);
+    color: white;
+}
+.form-buttons button[type="submit"]:hover { background-color: var(--primary-hover); }
+
+.form-buttons button[type="button"] {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+.form-buttons button[type="button"]:hover {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+}
+
+.btn-perigo {
+    background-color: var(--danger) !important;
+    color: white !important;
+    border: none !important;
+}
+.btn-perigo:hover { background-color: #dc2626 !important; }
+
+/* 8. TELA DE LOGIN */
+#login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, var(--bg-body) 0%, var(--border-color) 100%);
+}
+
+.login-box {
+    background: var(--bg-surface);
+    padding: 3rem;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px var(--shadow-color);
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.login-box h2 {
+    margin-bottom: 2rem;
+    color: var(--text-main);
+    font-weight: 800;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1.5rem;
+    transition: background-color 0.2s;
+}
+.btn-login:hover { background-color: var(--primary-hover); }
+
+/* Links (Esqueci a senha) */
+a {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+a:hover { text-decoration: underline; }
+
+#grafico-container {
+    background-color: var(--bg-surface);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 var(--shadow-color);
+    border: 1px solid var(--border-color);
+    min-height: 400px; 
+    width: 100%;
+    margin: 0 0 2rem 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 300px; 
+    width: 100%;
+    flex-grow: 1; 
+}
+
+#grafico-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 10. PAGINAÇÃO E FOOTER */
+.paginacao-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 0 10px;
+    gap: 15px;
+}
+.paginacao-container button {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: 600;
+}
+.paginacao-container button:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.paginacao-container button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+footer {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 2rem;
+}
+
+/* Botão Adicionar Usuário (Específico) */
+#btn-adicionar-usuario {
+    background-color: var(--success);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+#btn-adicionar-usuario:hover { background-color: #059669; }
+
+/* --- Toast Notifications (Avisos Flutuantes) --- */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    min-width: 300px;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: var(--bg-surface);
+    color: var(--text-main);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-left: 5px solid;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    animation: slideInRight 0.3s ease-out forwards;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.toast.sucesso { border-left-color: var(--success); }
+.toast.erro { border-left-color: var(--danger); }
+.toast.info { border-left-color: var(--primary); }
+
+.toast.hiding {
+    animation: fadeOut 0.3s ease-in forwards;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fadeOut {
+    to { opacity: 0; transform: translateY(-10px); }
+}

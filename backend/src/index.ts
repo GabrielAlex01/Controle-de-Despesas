@@ -175,7 +175,15 @@ async function registrarLog(acao: string, usuario_id: number, despesa_id: number
 
 const app = express();
 const port = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'segredo_padrao_de_emergencia';
+
+// Busca a chave do arquivo .env
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// Validação Fail-Safe: Se a chave não existir, o processo é interrompido imediatamente
+if (!JWT_SECRET) {
+    console.error("ERRO CRÍTICO: Variável de ambiente JWT_SECRET não definida no arquivo .env.");
+    process.exit(1); // Encerra o servidor com código de erro
+}
 
 app.use(express.json());
 app.use(cors());
@@ -235,10 +243,10 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
             return res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de redefinição foi enviado.' });
         }
 
-        // 1. Gerar um token seguro e aleatório
+        // Gerar um token seguro e aleatório
         const resetToken = randomBytes(32).toString('hex');
 
-        // 2. Salvar o token "hasheado" no banco de dados para segurança (opcional, mas recomendado)
+        // Salvar o token "hasheado" no banco de dados para segurança (opcional, mas recomendado)
         // Para simplificar, salvaremos o token direto, mas em produção o ideal seria salvar o hash do token.
         // Vamos definir uma expiração de 1 hora.
         const expires = new Date(Date.now() + 3600000); // 1 hora a partir de agora
@@ -461,7 +469,7 @@ app.put('/api/usuarios/alterar-senha', authLimiter, verificarToken, async (req: 
     }
 });
 
-// Endpoint para o MESTRE alterar o papel de um usuário ---
+// Endpoint para o MESTRE alterar o papel de um usuário 
 app.put('/api/usuarios/:id/papel', verificarToken, verificarPapel(['mestre']), async (req: RequestComUsuario, res) => {
     const idParaAlterar = req.params.id;
     const { papel } = req.body;
@@ -841,7 +849,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         conn = await pool.getConnection();
 
-        // 1. Procura o usuário pelo e-mail
+        // Procura o usuário pelo e-mail
         const [usuario] = await conn.query("SELECT * FROM usuarios WHERE email = ?", [email]);
 
         // Se o usuário não for encontrado, NÃO dizemos "usuário não encontrado" por segurança.
@@ -850,7 +858,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
             return res.status(401).json({ error: 'Credenciais inválidas.' }); // 401 Unauthorized
         }
 
-        // 2. Compara a senha enviada com o hash salvo no banco
+        // Compara a senha enviada com o hash salvo no banco
         // A função bcrypt.compare faz isso de forma segura.
         const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash);
 
@@ -858,7 +866,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
             return res.status(401).json({ error: 'Credenciais inválidas.' });
         }
 
-        // 3. Se a senha está correta, criamos o Token JWT
+        // Se a senha está correta, criamos o Token JWT
         const payload = {
             id: usuario.id,
             nome: usuario.nome,
@@ -867,7 +875,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' }); // Token expira em 8 horas
 
-        // 4. Enviamos a resposta de sucesso com os dados do usuário e o token
+        // Enviamos a resposta de sucesso com os dados do usuário e o token
         res.status(200).json({
             id: usuario.id,
             nome: usuario.nome,
@@ -884,7 +892,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     }
 });
 
-// 3. Agendamento da tarefa (cron job)
+// Agendamento da tarefa (cron job)
 // A sintaxe '0 9 * * *' significa: no minuto 0, da hora 9, todos os dias do mês, todos os meses, todos os dias da semana.
 cron.schedule('0 9 * * *', verificarEVenviarEmailsDeVencimento, {
     timezone: "America/Sao_Paulo"
