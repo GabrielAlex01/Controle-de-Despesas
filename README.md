@@ -70,6 +70,8 @@ A segurança foi um pilar central no desenvolvimento da aplicação. As seguinte
 * **Prevenção de Ataques de Força Bruta e DDoS com Rate Limiting:** Utilizando a biblioteca express-rate-limit, ela implementa um controle de taxa de requisições. Há um limite geral para todas as rotas, mitigando ataques de negação de serviço. Além disso, um limite muito mais estrito é aplicado aos endpoints de autenticação (login, recuperação de senha, etc.), tornando ataques de força bruta para adivinhar senhas praticamente inviáveis.
 * **Política Fail-Safe de Segredos**: O backend implementa uma verificação crítica na inicialização; caso as variáveis de ambiente (como `JWT_SECRET`) não sejam detectadas, o servidor recusa a execução para evitar estados vulneráveis.
 * **Trilha de Auditoria Imutável (Audit Trail)**: Sistema de logs robusto que registra o "quem, quando e o quê" de cada alteração no sistema. Para garantir a integridade, logs de usuários deletados são preservados com identificação histórica.
+* **Proteção contra Cross-Site Scripting (XSS):** Implementação de sanitização rigorosa no Front-end.
+    Todas as variáveis renderizadas no HTML passam por uma função de escape (`escapeHtml`) que converte caracteres especiais em entidades HTML, neutralizando tentativas de injeção de scripts maliciosos via inputs de formulários.
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -121,7 +123,20 @@ Siga este passo a passo para configurar e rodar o projeto em um novo ambiente de
 
 6.  Copie e cole o conteúdo abaixo no arquivo `.env`, substituindo pelos seus dados:
     ```env
-    DB_PASSWORD="a_senha_que_voce_criou_para_o_mariadb"
+      # --- CONFIGURAÇÕES DO SERVIDOR --- 
+    PORT=3000
+    # URL do Front-end 
+    # Localmente use: [http://127.0.0.1:5500/frontend](http://127.0.0.1:5500/frontend)
+    # Em produção use: [https://seu-dominio.com](https://seu-dominio.com)
+    FRONTEND_URL=[http://127.0.0.1:5500/frontend](http://127.0.0.1:5500/frontend)
+
+       # --- BANCO DE DADOS ---
+    DB_HOST=127.0.0.1
+    DB_USER=root
+    DB_PASSWORD="sua_senha_do_mariadb"
+    DB_NAME=controle_despesas
+
+       # --- SEGURANÇA E E-MAIL ---
     JWT_SECRET="crie_uma_chave_longa_e_aleatoria_aqui"
     EMAIL_USER="seu_email_de_envio@gmail.com"
     EMAIL_PASS="sua_senha_de_app_de_16_letras_do_gmail"
