@@ -33,7 +33,7 @@ A aplicação foi reestruturada para separar claramente as responsabilidades de 
 └── README.md
 ```
 
-## ✨ Funcionalidades Principais
+## Funcionalidades Principais
 
 * **Gestão Completa de Despesas:** CRUD (Criar, Ler, Atualizar, Excluir) completo para todas as despesas.
 * **Dashboard Interativo:** Painel com resumo de totais mensais por categoria e um gráfico de linhas para análise de tendências de gastos ao longo do ano.
