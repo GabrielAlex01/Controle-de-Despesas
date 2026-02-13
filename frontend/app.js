@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -8,8 +9,30 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 console.log("app.ts foi carregado e está sendo executado.");
-// Constantes Globais 
-const API_BASE_URL = 'http://localhost:3000/api';
+// Detecta se está rodando localmente (localhost ou 127.0.0.1)
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// URL DO SEU BACKEND
+// Quando você subir o backend (na Render, Railway, etc), você copia o link que eles te derem e cola ali embaixo.
+const URL_PRODUCAO = 'https://COLE_AQUI_O_LINK_DO_SEU_BACKEND_QUANDO_TIVER.com';
+// Se for local, usa a porta 3000. 
+// Se for produção, usa a URL relativa '/api' (assumindo que front e back estão no mesmo domínio)
+// OU você pode colocar a URL do seu backend na nuvem no lugar de '/api'
+const API_BASE_URL = isLocalhost
+    ? 'http://localhost:3000/api' // No seu PC, usa esse
+    : `${URL_PRODUCAO}/api`; // Na internet, usa o link real
+console.log(`Ambiente detectado: ${isLocalhost ? 'Local' : 'Produção'}. API: ${API_BASE_URL}`);
+// Função de segurança para prevenir XSS
+function escapeHtml(text) {
+    if (!text)
+        return '';
+    return text
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 let meuGrafico = null;
 let graficoRelatorio = null;
 let despesas = [];
@@ -123,6 +146,16 @@ function alternarTema() {
     btnTema.innerText = isDark ? '☀️' : '🌙';
     // Salva preferência
     localStorage.setItem('temaPreferido', isDark ? 'escuro' : 'claro');
+}
+// Função para consertar o bug do "dia anterior"
+function formatarDataVisual(dataISO) {
+    if (!dataISO)
+        return '--';
+    // Pega a parte da data (YYYY-MM-DD) e quebra em pedaços
+    const partes = dataISO.split('T')[0].split('-');
+    // partes[0] = ano, partes[1] = mes, partes[2] = dia
+    // Remonta a data string manualmente, ignorando fuso horário
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 function carregarTemaInicial() {
     const temaSalvo = localStorage.getItem('temaPreferido');
@@ -331,20 +364,20 @@ function carregarUsuariosDoBackend() {
                 const ehUsuarioLogado = usuarioLogado && usuario.id === usuarioLogado.id;
                 if (ehUsuarioLogado) {
                     // Se for a linha do próprio mestre, desabilita o botão de alterar papel
-                    botoesAcao = `<button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${usuario.nome}" disabled>Alterar Papel</button>`;
+                    botoesAcao = `<button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${escapeHtml(usuario.nome)}" disabled>Alterar Papel</button>`;
                 }
                 else {
                     // Para todos os outros usuários, mostra os dois botões normalmente
                     botoesAcao = `
-                    <button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${usuario.nome}">Alterar Papel</button>
-                    <button class="btn-excluir-usuario" data-id="${usuario.id}" data-nome="${usuario.nome}">Excluir</button>
+                    <button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${escapeHtml(usuario.nome)}">Alterar Papel</button>
+                    <button class="btn-excluir-usuario" data-id="${usuario.id}" data-nome="${escapeHtml(usuario.nome)}">Excluir</button>
                 `;
                 }
                 tr.innerHTML = `
                 <td>${usuario.id}</td>
-                <td>${usuario.nome}</td>
-                <td>${usuario.email}</td>
-                <td>${usuario.papel}</td>
+                <td>${escapeHtml(usuario.nome)}</td>   
+                <td>${escapeHtml(usuario.email)}</td>  
+                <td>${usuario.papel}</td> 
                 <td>
                     ${botoesAcao}
                 </td>
@@ -373,7 +406,7 @@ function carregarLogsDoBackend() {
             logs.forEach((log) => {
                 const tr = document.createElement('tr');
                 const dataFormatada = new Date(log.data_hora).toLocaleString('pt-BR');
-                tr.innerHTML = `<td>${dataFormatada}</td><td>${log.nome_usuario}</td><td>${log.descricao}</td>`;
+                tr.innerHTML = `<td>${dataFormatada}</td><td>${escapeHtml(log.nome_usuario)}</td><td>${escapeHtml(log.descricao)}</td>`;
                 tabelaLogsBody.appendChild(tr);
             });
             // Atualiza o estado da paginação
@@ -685,13 +718,13 @@ function renderizarTabelas() {
             botoesAcaoHtml = `<button class="btn-relatorio">Relatório</button>`;
         }
         const valorFormatado = Number(despesa.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const dataFormatada = new Date(despesa.vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        const dataFormatada = formatarDataVisual(despesa.vencimento);
         tr.innerHTML = `
-            <td>${nomeExibicao}</td>
+            <td>${escapeHtml(nomeExibicao)}</td>  
             <td>${valorFormatado}</td>
             <td>${mesSelecionado === 'todos' ? '---' : dataFormatada}</td>
             <td>${despesa.periodicidade}</td>
-            <td>${despesa.notaFiscal || '--'}</td>
+            <td>${escapeHtml(despesa.notaFiscal || '--')}</td> 
             <td>${despesa.situacaoFinanceiro}</td>
             <td>${despesa.situacaoFiscal}</td>
             <td>${botoesAcaoHtml}</td>
@@ -708,8 +741,7 @@ function renderizarTabelas() {
                 break;
         }
     });
-    // --- 2. LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos) ---
-    // Aqui usamos a lista ORIGINAL "despesas", não a agrupada, para somar tudo corretamente.
+    // LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos)
     let totalComercial = 0, totalServicos = 0, totalDespesasExtras = 0;
     despesas.forEach(d => {
         const data = new Date(d.vencimento);
@@ -790,7 +822,7 @@ btnAdicionarUsuario.addEventListener('click', () => {
     modalRegistrarContainer.classList.add('active');
 });
 btnRegistrarCancelar.addEventListener('click', fecharModalRegistrar);
-formRegistrar.addEventListener('submit', (event) => __awaiter(this, void 0, void 0, function* () {
+formRegistrar.addEventListener('submit', (event) => __awaiter(void 0, void 0, void 0, function* () {
     event.preventDefault();
     const nome = registrarNomeInput.value;
     const email = registrarEmailInput.value;
@@ -845,7 +877,7 @@ function handleTabelasClick(event) {
 tabelaComercialBody.addEventListener('click', handleTabelasClick);
 tabelaServicosBody.addEventListener('click', handleTabelasClick);
 tabelaDespesasExtrasBody.addEventListener('click', handleTabelasClick);
-tabelaUsuariosBody.addEventListener('click', (event) => __awaiter(this, void 0, void 0, function* () {
+tabelaUsuariosBody.addEventListener('click', (event) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const target = event.target;
     const id = target.dataset.id;
@@ -868,7 +900,7 @@ tabelaUsuariosBody.addEventListener('click', (event) => __awaiter(this, void 0, 
     }
 }));
 btnPapelCancelar.addEventListener('click', fecharModalPapel);
-formPapel.addEventListener('submit', (event) => __awaiter(this, void 0, void 0, function* () {
+formPapel.addEventListener('submit', (event) => __awaiter(void 0, void 0, void 0, function* () {
     event.preventDefault();
     const id = usuarioIdPapelInput.value;
     const novoPapel = selectPapel.value;
@@ -896,7 +928,7 @@ btnExcluirCancelar.addEventListener('click', () => {
     idParaExcluir = null;
     modalExcluirContainer.classList.remove('active');
 });
-btnExcluirConfirmar.addEventListener('click', () => __awaiter(this, void 0, void 0, function* () {
+btnExcluirConfirmar.addEventListener('click', () => __awaiter(void 0, void 0, void 0, function* () {
     if (idParaExcluir !== null) {
         try {
             const response = yield fetchComToken(`${API_BASE_URL}/despesas/${idParaExcluir}`, { method: 'DELETE' });
@@ -930,7 +962,7 @@ btnAlterarSenha.addEventListener('click', () => {
 // Fecha o modal de alterar senha
 btnSenhaCancelar.addEventListener('click', fecharModalSenha);
 // Lógica para enviar o formulário de alteração de senha
-formSenha.addEventListener('submit', (event) => __awaiter(this, void 0, void 0, function* () {
+formSenha.addEventListener('submit', (event) => __awaiter(void 0, void 0, void 0, function* () {
     event.preventDefault();
     const senhaAtual = senhaAtualInput.value;
     const novaSenha = novaSenhaInput.value;
@@ -978,7 +1010,7 @@ btnExcluirUsuarioCancelar.addEventListener('click', () => {
     idUsuarioParaExcluir = null;
 });
 // Lógica de confirmação de exclusão de usuário (COM LOADING)
-btnExcluirUsuarioConfirmar.addEventListener('click', () => __awaiter(this, void 0, void 0, function* () {
+btnExcluirUsuarioConfirmar.addEventListener('click', () => __awaiter(void 0, void 0, void 0, function* () {
     if (idUsuarioParaExcluir === null)
         return;
     // 1. Ativa o Loading e trava o botão
@@ -991,7 +1023,7 @@ btnExcluirUsuarioConfirmar.addEventListener('click', () => __awaiter(this, void 
             const errorData = yield response.json();
             throw new Error(errorData.error || 'Falha ao excluir usuário.');
         }
-        // 2. Sucesso: Toast verde + Atualizar lista
+        //Toast verde + Atualizar lista
         mostrarToast('Usuário excluído com sucesso!', 'sucesso');
         yield carregarUsuariosDoBackend();
         // Fecha o modal apenas se deu certo
@@ -1000,11 +1032,11 @@ btnExcluirUsuarioConfirmar.addEventListener('click', () => __awaiter(this, void 
     }
     catch (error) {
         console.error('Erro ao excluir usuário:', error);
-        // 3. Erro: Toast vermelho (Não fecha o modal para a pessoa tentar de novo se quiser)
+        // Erro = Toast vermelho (Não fecha o modal para a pessoa tentar de novo se quiser)
         mostrarToast(`Erro: ${error.message}`, 'erro');
     }
     finally {
-        // 4. Sempre destrava o botão no final
+        // Sempre destrava o botão no final
         setCarregando(btnExcluirUsuarioConfirmar, false, 'Confirmar Exclusão');
     }
 }));
@@ -1014,7 +1046,7 @@ btnLogsAnterior.addEventListener('click', () => {
     }
 });
 btnLogsProximo.addEventListener('click', () => {
-    // A lógica de desabilitar o botão já previne isso, mas é uma segurança extra
+    // A lógica de desabilitar o botão
     carregarLogsDoBackend(logsPaginaAtual + 1);
 });
 // Abre o modal de "esqueci a senha"
@@ -1029,7 +1061,7 @@ btnForgotCancelar.addEventListener('click', () => {
     modalForgotPasswordContainer.classList.remove('active');
 });
 // Envia o e-mail de redefinição
-formForgotPassword.addEventListener('submit', (e) => __awaiter(this, void 0, void 0, function* () {
+formForgotPassword.addEventListener('submit', (e) => __awaiter(void 0, void 0, void 0, function* () {
     e.preventDefault();
     const email = forgotEmailInput.value;
     try {

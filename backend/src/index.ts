@@ -12,16 +12,16 @@ import { randomBytes } from 'crypto';
 
 // Configurações da conexão com o banco de dados
 const pool = mariadb.createPool({
-    host: '127.0.0.1',
-    user: 'root',
+    host: process.env.DB_HOST || '127.0.0.1',
+    user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD,
-    database: 'controle_despesas',
+    database: process.env.DB_NAME || 'controle_despesas',
     connectionLimit: 5
 });
 
 // Limitador Geral para todas as rotas da API
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // Janela de 15 minutos
+    windowMs: 30 * 60 * 1000, // Janela de 15 minutos
     max: 100, // Limita cada IP a 100 requisições por janela
     message: { error: 'Muitas requisições enviadas a partir deste IP. Por favor, tente novamente após 15 minutos.' },
     standardHeaders: true,
@@ -37,7 +37,7 @@ const authLimiter = rateLimit({
 
 // Nodemailer - Agendamento diário às 8h para verificar contas a vencer
 // Função principal que faz a verificação e o envio
-async function verificarEVenviarEmailsDeVencimento() {
+async function verificarEenviarEmailsDeVencimento() {
     console.log('----------------------------------------------------');
     console.log(`[${new Date().toLocaleString('pt-BR')}] Executando verificação de contas a vencer...`);
     let conn;
@@ -174,7 +174,7 @@ async function registrarLog(acao: string, usuario_id: number, despesa_id: number
 }
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Busca a chave do arquivo .env
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -185,9 +185,27 @@ if (!JWT_SECRET) {
     process.exit(1); // Encerra o servidor com código de erro
 }
 
-app.use(express.json());
-app.use(cors());
 app.use('/api/', apiLimiter);
+app.use(express.json());
+const allowedOrigins = [
+    'http://127.0.0.1:5500', // Live Server Local
+    'http://localhost:5500', // Live Server Local (alternativo)
+    process.env.FRONTEND_URL // Sua URL de produção (Ex: https://meu-app.vercel.app)
+];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Permite requisições sem origem (como Postman ou Apps Mobile)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'A política de CORS deste site não permite acesso desta origem.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    }
+}));
+
 
 // Rota de teste
 app.get('/', async (req, res) => {
@@ -237,8 +255,6 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
         conn = await pool.getConnection();
         const [usuario] = await conn.query("SELECT * FROM usuarios WHERE email = ?", [email]);
 
-        // IMPORTANTE: Mesmo que o usuário seja encontrado, enviamos uma resposta de sucesso
-        // Para evitar que invasores descubram quais e-mails estão cadastrados.
         if (!usuario) {
             return res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de redefinição foi enviado.' });
         }
@@ -246,17 +262,16 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
         // Gerar um token seguro e aleatório
         const resetToken = randomBytes(32).toString('hex');
 
-        // Salvar o token "hasheado" no banco de dados para segurança (opcional, mas recomendado)
-        // Para simplificar, salvaremos o token direto, mas em produção o ideal seria salvar o hash do token.
-        // Vamos definir uma expiração de 1 hora.
-        const expires = new Date(Date.now() + 3600000); // 1 hora a partir de agora
+        // Salvar o token "hasheado" no banco de dados para segurança
+        const expires = new Date(Date.now() + 3600000); // 1 hora para expiração
 
         const sqlUpdate = "UPDATE usuarios SET reset_token = ?, reset_token_expires = ? WHERE id = ?";
         await conn.query(sqlUpdate, [resetToken, expires, usuario.id]);
 
         // Enviar o e-mail com o link de redefinição
-        // ATENÇÃO: A URL deve apontar para o seu front-end. O padrão do Live Server é 127.0.0.1:5500
-        const resetUrl = `http://127.0.0.1:5500/reset-password.html?token=${resetToken}`;
+        // A URL deve apontar para o seu front-end. O padrão do Live Server é 127.0.0.1:5500
+        const baseUrl = process.env.FRONTEND_URL || 'http://127.0.0.1:5500/frontend';
+        const resetUrl = `${baseUrl}/reset-password.html?token=${resetToken}`;
         const htmlEmail = `
             <h1>Redefinição de Senha</h1>
             <p>Olá, ${usuario.nome}.</p>
@@ -420,7 +435,7 @@ app.put('/api/usuarios/alterar-senha', authLimiter, verificarToken, async (req: 
     // Pega os dados do corpo da requisição
     const { senhaAtual, novaSenha } = req.body;
 
-    // Pega o ID do usuário a partir do token JWT (é mais seguro, pois vem do login)
+    // Pega o ID do usuário a partir do token JWT
     const idUsuarioLogado = req.usuario.id;
 
     // Validação básica
@@ -439,7 +454,6 @@ app.put('/api/usuarios/alterar-senha', authLimiter, verificarToken, async (req: 
         const [usuario] = await conn.query("SELECT * FROM usuarios WHERE id = ?", [idUsuarioLogado]);
 
         if (!usuario) {
-            // Isso não deveria acontecer se o token for válido, mas é uma boa verificação
             return res.status(404).json({ error: 'Usuário não encontrado.' });
         }
 
@@ -458,7 +472,6 @@ app.put('/api/usuarios/alterar-senha', authLimiter, verificarToken, async (req: 
         const sql = "UPDATE usuarios SET senha_hash = ? WHERE id = ?";
         await conn.query(sql, [novaSenhaHash, idUsuarioLogado]);
 
-        // Envia a resposta de sucesso
         res.status(200).json({ message: 'Senha alterada com sucesso!' });
 
     } catch (err) {
@@ -504,7 +517,7 @@ app.put('/api/usuarios/:id/papel', verificarToken, verificarPapel(['mestre']), a
 
         // Registra a ação no log com o nome do usuário
         const descricaoLog = `Alterou o papel do usuário "${nomeUsuarioAlvo}" (ID: ${idParaAlterar}) para "${papel}"`;
-        await registrarLog(descricaoLog, idDoMestre, null); // despesa_id é null aqui
+        await registrarLog(descricaoLog, idDoMestre, null); 
 
         res.status(200).json({ message: 'Papel do usuário atualizado com sucesso.' });
 
@@ -740,14 +753,14 @@ app.delete('/api/despesas/:id', verificarToken, verificarPapel(['editor', 'mestr
     try {
         conn = await pool.getConnection();
 
-        // 1. Busca o nome da despesa ANTES de deletar, para usar no log.
+        // Busca o nome da despesa ANTES de deletar, para usar no log.
         const [despesaParaExcluir] = await conn.query("SELECT fornecedor FROM despesas WHERE id = ?", [id]);
         if (!despesaParaExcluir) {
             return res.status(404).json({ error: 'Despesa não encontrada para exclusão.' });
         }
         const nomeDespesaExcluida = despesaParaExcluir.fornecedor;
 
-        // 2. Deleta a despesa do banco de dados.
+        // Deleta a despesa do banco de dados.
         const sql = "DELETE FROM despesas WHERE id = ?";
         const result = await conn.query(sql, [id]);
 
@@ -758,7 +771,7 @@ app.delete('/api/despesas/:id', verificarToken, verificarPapel(['editor', 'mestr
 
         const usuarioIdLog = (req as RequestComUsuario).usuario.id;
 
-        // 3. Registra o log com o nome da despesa que foi guardado.
+        // Registra o log com o nome da despesa que foi guardado.
         const descricaoLog = `Excluiu a despesa "${nomeDespesaExcluida}" (ID: ${id})`;
         await registrarLog(descricaoLog, usuarioIdLog, null);
 
@@ -795,7 +808,6 @@ app.post('/api/auth/registrar', verificarToken, verificarPapel(['mestre']), asyn
         const sql = "INSERT INTO usuarios (nome, email, senha_hash) VALUES (?, ?, ?)";
         const result = await conn.query(sql, [nome, email, senhaHash]);
 
-        // **** A CORREÇÃO FINAL ESTÁ AQUI ****
         const novoId = Number(result.insertId);
 
         res.status(201).json({
@@ -894,13 +906,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
 // Agendamento da tarefa (cron job)
 // A sintaxe '0 9 * * *' significa: no minuto 0, da hora 9, todos os dias do mês, todos os meses, todos os dias da semana.
-cron.schedule('0 9 * * *', verificarEVenviarEmailsDeVencimento, {
+cron.schedule('0 9 * * *', verificarEenviarEmailsDeVencimento, {
     timezone: "America/Sao_Paulo"
 });
 console.log('Tarefa de verificação de e-mails agendada para todos os dias às 09:00.');
 
-
-// Inicia o servidor
 app.listen(port, () => {
-    console.log(`Servidor back-end rodando na porta http://localhost:${port}`);
+    // O 0.0.0.0 indica que o servidor está aceitando conexões de fora
+    console.log(`Servidor rodando na porta ${port}`);
 });

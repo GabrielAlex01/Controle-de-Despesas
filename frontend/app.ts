@@ -1,6 +1,32 @@
 console.log("app.ts foi carregado e está sendo executado.");
-// Constantes Globais 
-const API_BASE_URL = 'http://localhost:3000/api';
+
+// Detecta se está rodando localmente (localhost ou 127.0.0.1)
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// URL DO SEU BACKEND
+// Quando você subir o backend (na Render, Railway, etc), você copia o link que eles te derem e cola ali embaixo.
+const URL_PRODUCAO = 'https://COLE_AQUI_O_LINK_DO_SEU_BACKEND_QUANDO_TIVER.com';
+
+// Se for local, usa a porta 3000. 
+// Se for produção, usa a URL relativa '/api' (assumindo que front e back estão no mesmo domínio)
+// OU você pode colocar a URL do seu backend na nuvem no lugar de '/api'
+const API_BASE_URL = isLocalhost 
+    ? 'http://localhost:3000/api' // No seu PC, usa esse
+    : `${URL_PRODUCAO}/api`;       // Na internet, usa o link real
+
+console.log(`Ambiente detectado: ${isLocalhost ? 'Local' : 'Produção'}. API: ${API_BASE_URL}`);
+
+// Função de segurança para prevenir XSS
+function escapeHtml(text: string | null | undefined): string {
+    if (!text) return '';
+    return text
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 // Interfaces de Tipos
 interface Despesa {
@@ -149,6 +175,16 @@ function alternarTema() {
     
     // Salva preferência
     localStorage.setItem('temaPreferido', isDark ? 'escuro' : 'claro');
+}
+
+// Função para consertar o bug do "dia anterior"
+function formatarDataVisual(dataISO: string): string {
+    if (!dataISO) return '--';
+    // Pega a parte da data (YYYY-MM-DD) e quebra em pedaços
+    const partes = dataISO.split('T')[0].split('-'); 
+    // partes[0] = ano, partes[1] = mes, partes[2] = dia
+    // Remonta a data string manualmente, ignorando fuso horário
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
 function carregarTemaInicial() {
@@ -369,20 +405,20 @@ async function carregarUsuariosDoBackend() {
 
             if (ehUsuarioLogado) {
                 // Se for a linha do próprio mestre, desabilita o botão de alterar papel
-                botoesAcao = `<button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${usuario.nome}" disabled>Alterar Papel</button>`;
+                botoesAcao = `<button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${escapeHtml(usuario.nome)}" disabled>Alterar Papel</button>`;
             } else {
                 // Para todos os outros usuários, mostra os dois botões normalmente
                 botoesAcao = `
-                    <button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${usuario.nome}">Alterar Papel</button>
-                    <button class="btn-excluir-usuario" data-id="${usuario.id}" data-nome="${usuario.nome}">Excluir</button>
+                    <button class="btn-editar-usuario" data-id="${usuario.id}" data-nome="${escapeHtml(usuario.nome)}">Alterar Papel</button>
+                    <button class="btn-excluir-usuario" data-id="${usuario.id}" data-nome="${escapeHtml(usuario.nome)}">Excluir</button>
                 `;
             }
 
             tr.innerHTML = `
                 <td>${usuario.id}</td>
-                <td>${usuario.nome}</td>
-                <td>${usuario.email}</td>
-                <td>${usuario.papel}</td>
+                <td>${escapeHtml(usuario.nome)}</td>   
+                <td>${escapeHtml(usuario.email)}</td>  
+                <td>${usuario.papel}</td> 
                 <td>
                     ${botoesAcao}
                 </td>
@@ -409,7 +445,7 @@ async function carregarLogsDoBackend(pagina = 1) {
         logs.forEach((log: any) => {
             const tr = document.createElement('tr');
             const dataFormatada = new Date(log.data_hora).toLocaleString('pt-BR');
-            tr.innerHTML = `<td>${dataFormatada}</td><td>${log.nome_usuario}</td><td>${log.descricao}</td>`;
+            tr.innerHTML = `<td>${dataFormatada}</td><td>${escapeHtml(log.nome_usuario)}</td><td>${escapeHtml(log.descricao)}</td>`;
             tabelaLogsBody.appendChild(tr);
         });
 
@@ -742,14 +778,14 @@ function renderizarTabelas() {
         }
 
         const valorFormatado = Number(despesa.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const dataFormatada = new Date(despesa.vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        const dataFormatada = formatarDataVisual(despesa.vencimento);
 
         tr.innerHTML = `
-            <td>${nomeExibicao}</td>
+            <td>${escapeHtml(nomeExibicao)}</td>  
             <td>${valorFormatado}</td>
             <td>${mesSelecionado === 'todos' ? '---' : dataFormatada}</td>
             <td>${despesa.periodicidade}</td>
-            <td>${despesa.notaFiscal || '--'}</td>
+            <td>${escapeHtml(despesa.notaFiscal || '--')}</td> 
             <td>${despesa.situacaoFinanceiro}</td>
             <td>${despesa.situacaoFiscal}</td>
             <td>${botoesAcaoHtml}</td>
@@ -762,8 +798,7 @@ function renderizarTabelas() {
         }
     });
 
-    // --- 2. LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos) ---
-    // Aqui usamos a lista ORIGINAL "despesas", não a agrupada, para somar tudo corretamente.
+    // LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos)
     let totalComercial = 0, totalServicos = 0, totalDespesasExtras = 0;
 
     despesas.forEach(d => {
@@ -1052,7 +1087,7 @@ btnExcluirUsuarioConfirmar.addEventListener('click', async () => {
             throw new Error(errorData.error || 'Falha ao excluir usuário.');
         }
 
-        // 2. Sucesso: Toast verde + Atualizar lista
+        //Toast verde + Atualizar lista
         mostrarToast('Usuário excluído com sucesso!', 'sucesso');
         await carregarUsuariosDoBackend(); 
         
@@ -1062,10 +1097,10 @@ btnExcluirUsuarioConfirmar.addEventListener('click', async () => {
 
     } catch (error: any) {
         console.error('Erro ao excluir usuário:', error);
-        // 3. Erro: Toast vermelho (Não fecha o modal para a pessoa tentar de novo se quiser)
+        // Erro = Toast vermelho (Não fecha o modal para a pessoa tentar de novo se quiser)
         mostrarToast(`Erro: ${error.message}`, 'erro');
     } finally {
-        // 4. Sempre destrava o botão no final
+        // Sempre destrava o botão no final
         setCarregando(btnExcluirUsuarioConfirmar, false, 'Confirmar Exclusão');
     }
 });
@@ -1077,7 +1112,7 @@ btnLogsAnterior.addEventListener('click', () => {
 });
 
 btnLogsProximo.addEventListener('click', () => {
-    // A lógica de desabilitar o botão já previne isso, mas é uma segurança extra
+    // A lógica de desabilitar o botão
     carregarLogsDoBackend(logsPaginaAtual + 1);
 });
 
