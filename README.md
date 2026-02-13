@@ -339,10 +339,23 @@ Acesse o MariaDB com o usuário `root` :
     
 5. Dentro do editor nano, cole o conteúdo abaixo e preencha com seus dados (a senha do root que você definiu, suas credenciais do Gmail, etc.).
     ```env
-    DB_PASSWORD="a_senha_que_voce_criou_para_o_mariadb"
-    JWT_SECRET="crie_uma_chave_longa_e_aleatoria_aqui"
-    EMAIL_USER="seu_email_de_envio@gmail.com"
-    EMAIL_PASS="sua_senha_de_app_de_16_letras_do_gmail"
+     # --- CONFIGURAÇÕES DO SERVIDOR --- 
+   PORT=3000
+   # URL do Front-end 
+   # Localmente use: [http://127.0.0.1:5500/frontend](http://127.0.0.1:5500/frontend)
+   # Em produção use: [https://seu-dominio.com](https://seu-dominio.com)
+   FRONTEND_URL=[http://127.0.0.1:5500/frontend](http://127.0.0.1:5500/frontend)
+   
+      # --- BANCO DE DADOS ---
+   DB_HOST=127.0.0.1
+   DB_USER=root
+   DB_PASSWORD="sua_senha_do_mariadb"
+   DB_NAME=controle_despesas
+   
+      # --- SEGURANÇA E E-MAIL ---
+   JWT_SECRET="crie_uma_chave_longa_e_aleatoria_aqui"
+   EMAIL_USER="seu_email_de_envio@gmail.com"
+   EMAIL_PASS="sua_senha_de_app_de_16_letras_do_gmail"
     ```
 Pressione Ctrl+X, depois Y e Enter para salvar e sair.
 
