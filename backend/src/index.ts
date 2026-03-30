@@ -16,13 +16,13 @@ const pool = mariadb.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'controle_despesas',
-    connectionLimit: 20
+    connectionLimit: 30
 });
 
 // Limitador Geral para todas as rotas da API
 const apiLimiter = rateLimit({
     windowMs: 30 * 60 * 1000, // Janela de 30 minutos
-    max: 100, // Limita cada IP a 100 requisições por janela
+    max: 200, // Limita cada IP a 100 requisições por janela
     message: { error: 'Muitas requisições enviadas a partir deste IP. Por favor, tente novamente após 15 minutos.' },
     standardHeaders: true,
     legacyHeaders: false,
