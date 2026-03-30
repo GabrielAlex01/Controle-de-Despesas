@@ -49,6 +49,7 @@ A aplicação foi reestruturada para separar claramente as responsabilidades de 
 * **Recuperação de Senha Segura:** Fluxo completo de "esqueci a senha" com tokens de uso único e tempo de expiração enviados por e-mail.
 * **Relatórios Individuais de Despesas:** Análise de tendência histórica para cada despesa, com gráfico de evolução de valores pagos ao longo do tempo.
 * **Auditoria e Logs:** Registro detalhado de todas as ações importantes (criação, alteração, exclusão) com informação de qual usuário realizou a ação, quando, e o que foi alterado.
+* **Exportação Segura de Relatórios (PDF):** Geração dinâmica de relatórios consolidados por divisão e individuais por conta, com injeção de gráficos espelhados da interface. A exportação exige validação de permissões no back-end e "carimba" automaticamente a data, hora e o nome do responsável no documento, além de gerar um registro rastreável na trilha de auditoria.
 * **Notificações por E-mail:** 
     * Serviço automatizado que verifica diariamente as contas a vencer e envia e-mails de alerta para os usuários responsáveis.
     * Notificações instantâneas para administradores sobre alterações em despesas de valor fixo.
@@ -60,6 +61,7 @@ A segurança foi um pilar central no desenvolvimento da aplicação. As seguinte
 * **Gerenciamento de Segredos com Variáveis de Ambiente (`.env`):** Credenciais críticas (senha do banco, segredo JWT, credenciais de e-mail) são mantidas fora do código-fonte, em um arquivo `.env` local. Este arquivo é excluído do controle de versão (`.gitignore`), garantindo que segredos nunca sejam expostos em repositórios de código.
 * **Criptografia de Senhas com `bcrypt`:** As senhas dos usuários nunca são armazenadas em texto puro. Utilizamos o algoritmo `bcrypt`, o padrão da indústria, para gerar um *hash* seguro e com "sal" de cada senha, que é o que fica armazenado no banco de dados. A verificação no login é feita comparando o hash da senha fornecida com o hash armazenado, sem nunca expor a senha original.
 * **Tokens Seguros para Redefinição de Senha:** O sistema de "esqueci a senha" utiliza tokens criptograficamente seguros (crypto), de uso único e com tempo de expiração, para validar a identidade do usuário antes de permitir a alteração da senha.
+* **Integridade de Dados no Nível do Banco (Defense in Depth):** Utilização de restrições rígidas como `ENUM` nas colunas críticas do banco de dados (ex: categorias e status). Essa estratégia atua como uma *Whitelist* na camada mais profunda do sistema (Layer 3), garantindo que, mesmo em caso de *bypass* nas validações do Front-end e Back-end, o MariaDB bloqueará e descartará automaticamente qualquer payload malicioso ou dado não autorizado.
 * **Autenticação via Token JWT (JSON Web Token):** Após o login, o usuário recebe um token JWT assinado digitalmente com o segredo do servidor. Para cada requisição a endpoints protegidos, este token deve ser enviado, provando a identidade do usuário.
 * **Princípio do Menor Privilégio (RBAC)**: Controle de acesso baseado em funções (Mestre, Editor, Visualizador), garantindo que usuários possuam apenas as permissões estritamente necessárias para suas funções.
 * **Middlewares de Segurança em Camadas:** O acesso aos endpoints da API é controlado por uma cadeia de middlewares que funcionam como "porteiros" sequenciais:
@@ -192,7 +194,7 @@ CREATE TABLE `despesas` (
   `fornecedor` varchar(255) DEFAULT NULL,
   `valor` decimal(10,2) DEFAULT NULL,
   `vencimento` date DEFAULT NULL,
-  `categoria` enum('comercial','servicos','despesas-extras') DEFAULT NULL,
+  `categoria` enum('infraestrutura','licencas','despesas-extras') DEFAULT NULL,
   `periodicidade` enum('Unica','Mensal','Anual','Parcelada') DEFAULT NULL,
   `notaFiscal` varchar(255) DEFAULT NULL,
   `situacaoFinanceiro` enum('Pendente','Entregue') DEFAULT 'Pendente',
@@ -297,7 +299,7 @@ Acesse o MariaDB com o usuário `root` :
 
          CREATE TABLE `despesas` (
            `id` int(11) NOT NULL AUTO_INCREMENT, `fornecedor` varchar(255) DEFAULT NULL, `valor` decimal(10,2) DEFAULT NULL,
-           `vencimento` date DEFAULT NULL, `categoria` enum('comercial','servicos','despesas-extras') DEFAULT NULL,
+           `vencimento` date DEFAULT NULL, `categoria` enum('infraestrutura','licencas','despesas-extras') DEFAULT NULL,
            `periodicidade` enum('Unica','Mensal','Anual','Parcelada') DEFAULT NULL, `notaFiscal` varchar(255) DEFAULT NULL,
            `situacaoFinanceiro` enum('Pendente','Entregue') DEFAULT 'Pendente', `situacaoFiscal` enum('Pendente','Entregue') DEFAULT 'Pendente',
            `status` enum('Pendente','Pago') DEFAULT 'Pendente', `criado_em` timestamp NULL DEFAULT current_timestamp(),
