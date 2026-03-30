@@ -10,7 +10,7 @@ const URL_PRODUCAO = 'https://COLE_AQUI_O_LINK_DO_SEU_BACKEND_QUANDO_TIVER.com';
 // Se for local, usa a porta 3000. 
 // Se for produção, usa a URL relativa '/api' (assumindo que front e back estão no mesmo domínio)
 // OU você pode colocar a URL do seu backend na nuvem no lugar de '/api'
-const API_BASE_URL = isLocalhost 
+const API_BASE_URL = isLocalhost
     ? 'http://localhost:3000/api' // No seu PC, usa esse
     : `${URL_PRODUCAO}/api`;       // Na internet, usa o link real
 
@@ -174,10 +174,10 @@ const btnTema = document.getElementById('btn-tema') as HTMLButtonElement;
 function alternarTema() {
     const body = document.body;
     const isDark = body.classList.toggle('dark-mode');
-    
+
     // Atualiza ícone
     btnTema.innerText = isDark ? '☀️' : '🌙';
-    
+
     // Salva preferência
     localStorage.setItem('temaPreferido', isDark ? 'escuro' : 'claro');
 }
@@ -186,7 +186,7 @@ function alternarTema() {
 function formatarDataVisual(dataISO: string): string {
     if (!dataISO) return '--';
     // Pega a parte da data (YYYY-MM-DD) e quebra em pedaços
-    const partes = dataISO.split('T')[0].split('-'); 
+    const partes = dataISO.split('T')[0].split('-');
     // partes[0] = ano, partes[1] = mes, partes[2] = dia
     // Remonta a data string manualmente, ignorando fuso horário
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
@@ -195,9 +195,9 @@ function formatarDataVisual(dataISO: string): string {
 function carregarTemaInicial() {
     const temaSalvo = localStorage.getItem('temaPreferido');
     // Se salvou escuro OU se não tem salvo mas o sistema do PC é escuro
-    const prefereEscuro = temaSalvo === 'escuro' || 
-                          (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
+    const prefereEscuro = temaSalvo === 'escuro' ||
+        (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
     if (prefereEscuro) {
         document.body.classList.add('dark-mode');
         if (btnTema) btnTema.innerText = '☀️';
@@ -474,7 +474,7 @@ function setCarregando(botao: HTMLButtonElement, carregando: boolean, textoOrigi
     if (carregando) {
         botao.disabled = true;
         // Adiciona um spinner simples via texto ou HTML
-        botao.innerHTML = '⏳ Processando...'; 
+        botao.innerHTML = '⏳ Processando...';
         botao.style.opacity = '0.7';
         botao.style.cursor = 'wait';
     } else {
@@ -491,7 +491,7 @@ function mostrarToast(mensagem: string, tipo: 'sucesso' | 'erro' | 'info' = 'inf
 
     const toast = document.createElement('div');
     toast.className = `toast ${tipo}`;
-    
+
     // Ícones simples para dar um tcham
     let icone = '';
     if (tipo === 'sucesso') icone = '✅';
@@ -553,7 +553,7 @@ async function handleFormSubmit(event: SubmitEvent) {
             }
         }
     }
-    
+
     // ATIVA O LOADING
     setCarregando(btnSalvar, true, 'Salvar');
 
@@ -777,7 +777,7 @@ function renderizarTabelas() {
         const nomeExibicao = mesSelecionado === 'todos'
             ? despesa.fornecedor.replace(/\s*\((Parcela|Recorrente).*$/, '').trim() + ' (Agrupado)'
             : despesa.fornecedor;
-            
+
         let botoesAcaoHtml = '';
         if (usuarioLogado && (usuarioLogado.papel === 'editor' || usuarioLogado.papel === 'mestre')) {
             botoesAcaoHtml = `
@@ -820,7 +820,7 @@ function renderizarTabelas() {
         // Verifica filtros de data
         const filtroMesOk = mesSelecionado === 'todos' || mes.toString() === mesSelecionado;
         const filtroAnoOk = anoSelecionado === '' || ano.toString() === anoSelecionado;
-        
+
         // Verifica se está PAGO (Regra Solicitada)
         const estaPago = d.status === 'Pago';
 
@@ -836,7 +836,7 @@ function renderizarTabelas() {
     // Atualiza os Cards
     const totalGeral = totalComercial + totalServicos + totalDespesasExtras;
     const formatarMoeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    
+
     totalComercialSpan.innerText = formatarMoeda(totalComercial);
     totalServicosSpan.innerText = formatarMoeda(totalServicos);
     totalDespesasExtrasSpan.innerText = formatarMoeda(totalDespesasExtras);
@@ -865,7 +865,16 @@ function renderizarGrafico() {
     if (!ctx) return;
     if (meuGrafico) meuGrafico.destroy();
     meuGrafico = new Chart(ctx, {
-        type: 'line', data: { labels: labels, datasets: [{ label: 'Comercial', data: dadosComercial, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 }, { label: 'Serviços', data: dadosServicos, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 }, { label: 'Desp. Extras', data: dadosExtras, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: `Evolução de Despesas - ${anoSelecionado}` } } }
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Infraestrutura', data: dadosComercial, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 },
+                { label: 'Licenças de Software', data: dadosServicos, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 },
+                { label: 'Desp. Extras', data: dadosExtras, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: `Evolução de Despesas - ${anoSelecionado}` } } }
     });
 }
 
@@ -1084,7 +1093,7 @@ async function validarEGerarPDF(tipoRelatorio: string, alvo: string, dadosTabela
         // Cabeçalhos
         doc.setFontSize(16);
         doc.text(`Relatório de Despesas: ${alvo}`, 14, 20);
-        
+
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(`Documento gerado sob supervisão do sistema.`, 14, 30);
@@ -1119,7 +1128,7 @@ async function validarEGerarPDF(tipoRelatorio: string, alvo: string, dadosTabela
 botoesGerarPdfCategoria.forEach(btn => {
     btn.addEventListener('click', (e) => {
         const categoria = (e.target as HTMLElement).dataset.categoria;
-        
+
         let idTabela = '';
         let datasetIndex = 0;
         if (categoria === 'comercial') { idTabela = 'tabela-comercial'; datasetIndex = 0; }
@@ -1135,7 +1144,7 @@ botoesGerarPdfCategoria.forEach(btn => {
             const status = tr.classList.contains('status-pago') ? 'Pago' : 'Pendente';
             return [tds[0].innerText, tds[1].innerText, tds[2].innerText, status];
         });
-        
+
         let imagemBase64 = null;
         if (meuGrafico) {
             // Oculta todos os datasets temporariamente, deixando só a categoria certa
@@ -1143,16 +1152,16 @@ botoesGerarPdfCategoria.forEach(btn => {
                 ds.hidden = (index !== datasetIndex);
             });
             meuGrafico.update('none'); // Renderiza instantaneamente sem animação
-            
+
             imagemBase64 = meuGrafico.toBase64Image();
-            
+
             // Restaura o gráfico original para o usuário ver tudo normal
             meuGrafico.data.datasets.forEach((ds: any) => {
                 ds.hidden = false;
             });
             meuGrafico.update('none');
         }
-        
+
         validarEGerarPDF('Visão Geral', categoria!.toUpperCase(), dados, ['Fornecedor', 'Valor', 'Vencimento', 'Status'], imagemBase64);
     });
 });
@@ -1161,7 +1170,7 @@ botoesGerarPdfCategoria.forEach(btn => {
 if (btnGerarPdfUnico) {
     btnGerarPdfUnico.addEventListener('click', () => {
         const fornecedor = relatorioTitulo.innerText.replace('Relatório de: ', '');
-        
+
         const linhas = Array.from(tabelaRelatorioBody.querySelectorAll('tr'));
         const dados = linhas.map(tr => {
             const tds = tr.querySelectorAll('td');
@@ -1209,8 +1218,8 @@ btnExcluirUsuarioConfirmar.addEventListener('click', async () => {
 
         // Toast verde + Atualizar lista
         mostrarToast('Usuário excluído com sucesso!', 'sucesso');
-        await carregarUsuariosDoBackend(); 
-        
+        await carregarUsuariosDoBackend();
+
         // Fecha o modal apenas se deu certo
         modalExcluirUsuarioContainer.classList.remove('active');
         idUsuarioParaExcluir = null;
