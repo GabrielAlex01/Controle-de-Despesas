@@ -43,6 +43,8 @@ let logsPaginaAtual = 1;
 const LOGS_POR_PAGINA = 20;
 let usuarioLogado = null;
 // Seletores de Elementos do DOM
+const btnGerarPdfUnico = document.getElementById('btn-gerar-pdf-unico');
+const botoesGerarPdfCategoria = document.querySelectorAll('.btn-gerar-pdf-categoria');
 const loginContainer = document.getElementById('login-container');
 const appContainer = document.getElementById('app-container');
 const formLogin = document.getElementById('form-login');
@@ -606,6 +608,11 @@ function atualizarUIComPermissoes() {
     document.body.classList.toggle('modo-visualizacao', !podeEditar);
     btnGerenciarUsuarios.style.display = ehMestre ? 'inline-block' : 'none';
     btnVerLogs.style.display = ehMestre ? 'inline-block' : 'none';
+    if (btnGerarPdfUnico)
+        btnGerarPdfUnico.style.display = podeEditar ? 'inline-block' : 'none';
+    botoesGerarPdfCategoria.forEach(btn => {
+        btn.style.display = podeEditar ? 'inline-block' : 'none';
+    });
 }
 function configurarFiltrosParaDataAtual() {
     const dataAtual = new Date();
@@ -996,6 +1003,106 @@ formSenha.addEventListener('submit', (event) => __awaiter(void 0, void 0, void 0
         alert(`Erro: ${error.message}`);
     }
 }));
+function validarEGerarPDF(tipoRelatorio_1, alvo_1, dadosTabela_1, colunas_1) {
+    return __awaiter(this, arguments, void 0, function* (tipoRelatorio, alvo, dadosTabela, colunas, imagemBase64Injetar = null) {
+        try {
+            const response = yield fetchComToken(`${API_BASE_URL}/relatorios/log-geracao`, {
+                method: 'POST',
+                body: JSON.stringify({ tipoRelatorio, alvo })
+            });
+            if (!response.ok) {
+                const err = yield response.json();
+                throw new Error(err.error || 'Sem permissão para gerar relatório.');
+            }
+            const infoSeguranca = yield response.json();
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            // Cabeçalhos
+            doc.setFontSize(16);
+            doc.text(`Relatório de Despesas: ${alvo}`, 14, 20);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Documento gerado sob supervisão do sistema.`, 14, 30);
+            doc.text(`Responsável: ${infoSeguranca.geradoPor}`, 14, 36);
+            doc.text(`Data e Hora: ${infoSeguranca.dataGeracao}`, 14, 42);
+            let startYParaTabela = 50;
+            // INJEÇÃO DIRETA DO BASE64 
+            if (imagemBase64Injetar) {
+                doc.addImage(imagemBase64Injetar, 'PNG', 14, 50, 180, 60);
+                startYParaTabela = 120; // Empurra a tabela para baixo para não sobrepor a imagem
+            }
+            doc.autoTable({
+                startY: startYParaTabela,
+                head: [colunas],
+                body: dadosTabela,
+                theme: 'striped',
+                styles: { fontSize: 9 }
+            });
+            doc.save(`Relatorio_${alvo.replace(/\s+/g, '_')}.pdf`);
+            mostrarToast('PDF exportado e ação registrada no log!', 'sucesso');
+        }
+        catch (error) {
+            console.error(error);
+            mostrarToast(`Erro: ${error.message}`, 'erro');
+        }
+    });
+}
+botoesGerarPdfCategoria.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const categoria = e.target.dataset.categoria;
+        let idTabela = '';
+        let datasetIndex = 0;
+        if (categoria === 'comercial') {
+            idTabela = 'tabela-comercial';
+            datasetIndex = 0;
+        }
+        else if (categoria === 'servicos') {
+            idTabela = 'tabela-servicos';
+            datasetIndex = 1;
+        }
+        else if (categoria === 'despesas-extras') {
+            idTabela = 'tabela-despesas-extras';
+            datasetIndex = 2;
+        }
+        const tabelaBody = document.getElementById(idTabela);
+        if (!tabelaBody)
+            return;
+        const linhas = Array.from(tabelaBody.querySelectorAll('tr'));
+        const dados = linhas.map(tr => {
+            const tds = tr.querySelectorAll('td');
+            const status = tr.classList.contains('status-pago') ? 'Pago' : 'Pendente';
+            return [tds[0].innerText, tds[1].innerText, tds[2].innerText, status];
+        });
+        let imagemBase64 = null;
+        if (meuGrafico) {
+            // Oculta todos os datasets temporariamente, deixando só a categoria certa
+            meuGrafico.data.datasets.forEach((ds, index) => {
+                ds.hidden = (index !== datasetIndex);
+            });
+            meuGrafico.update('none'); // Renderiza instantaneamente sem animação
+            imagemBase64 = meuGrafico.toBase64Image();
+            // Restaura o gráfico original para o usuário ver tudo normal
+            meuGrafico.data.datasets.forEach((ds) => {
+                ds.hidden = false;
+            });
+            meuGrafico.update('none');
+        }
+        validarEGerarPDF('Visão Geral', categoria.toUpperCase(), dados, ['Fornecedor', 'Valor', 'Vencimento', 'Status'], imagemBase64);
+    });
+});
+// PDF da Conta Específica
+if (btnGerarPdfUnico) {
+    btnGerarPdfUnico.addEventListener('click', () => {
+        const fornecedor = relatorioTitulo.innerText.replace('Relatório de: ', '');
+        const linhas = Array.from(tabelaRelatorioBody.querySelectorAll('tr'));
+        const dados = linhas.map(tr => {
+            const tds = tr.querySelectorAll('td');
+            return [tds[0].innerText, tds[1].innerText];
+        });
+        const imagemBase64 = graficoRelatorio ? graficoRelatorio.toBase64Image() : null;
+        validarEGerarPDF('Conta Específica', fornecedor, dados, ['Vencimento', 'Valor Pago'], imagemBase64);
+    });
+}
 btnVerLogs.addEventListener('click', () => {
     mostrarTelaLogs();
     carregarLogsDoBackend(1);
@@ -1013,7 +1120,7 @@ btnExcluirUsuarioCancelar.addEventListener('click', () => {
 btnExcluirUsuarioConfirmar.addEventListener('click', () => __awaiter(void 0, void 0, void 0, function* () {
     if (idUsuarioParaExcluir === null)
         return;
-    // 1. Ativa o Loading e trava o botão
+    // Ativa o Loading e trava o botão
     setCarregando(btnExcluirUsuarioConfirmar, true, 'Confirmar Exclusão');
     try {
         const response = yield fetchComToken(`${API_BASE_URL}/usuarios/${idUsuarioParaExcluir}`, {
@@ -1023,7 +1130,7 @@ btnExcluirUsuarioConfirmar.addEventListener('click', () => __awaiter(void 0, voi
             const errorData = yield response.json();
             throw new Error(errorData.error || 'Falha ao excluir usuário.');
         }
-        //Toast verde + Atualizar lista
+        // Toast verde + Atualizar lista
         mostrarToast('Usuário excluído com sucesso!', 'sucesso');
         yield carregarUsuariosDoBackend();
         // Fecha o modal apenas se deu certo

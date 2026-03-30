@@ -16,12 +16,12 @@ const pool = mariadb.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'controle_despesas',
-    connectionLimit: 5
+    connectionLimit: 20
 });
 
 // Limitador Geral para todas as rotas da API
 const apiLimiter = rateLimit({
-    windowMs: 30 * 60 * 1000, // Janela de 15 minutos
+    windowMs: 30 * 60 * 1000, // Janela de 30 minutos
     max: 100, // Limita cada IP a 100 requisições por janela
     message: { error: 'Muitas requisições enviadas a partir deste IP. Por favor, tente novamente após 15 minutos.' },
     standardHeaders: true,
@@ -901,6 +901,32 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         res.status(500).json({ error: 'Erro interno ao tentar fazer login.' });
     } finally {
         if (conn) conn.release();
+    }
+});
+
+// Relatórios
+app.post('/api/relatorios/log-geracao', verificarToken, verificarPapel(['editor', 'mestre']), async (req: RequestComUsuario, res) => {
+    const { tipoRelatorio, alvo } = req.body;
+    const usuarioId = req.usuario.id;
+    const nomeUsuario = req.usuario.nome;
+
+    if (!tipoRelatorio || !alvo) {
+        return res.status(400).json({ error: 'Tipo de relatório e alvo são obrigatórios.' });
+    }
+
+    try {
+        const descricaoLog = `Exportou PDF (${tipoRelatorio}): ${alvo}`;
+        await registrarLog(descricaoLog, usuarioId, null);
+        
+        // Retorna os dados para o front-end carimbar no PDF, garantindo a autoria
+        res.status(200).json({ 
+            autorizado: true, 
+            geradoPor: nomeUsuario,
+            dataGeracao: new Date().toLocaleString('pt-BR')
+        });
+    } catch (err) {
+        console.error("Erro ao registrar log de relatório:", err);
+        res.status(500).json({ error: 'Erro interno ao autorizar relatório.' });
     }
 });
 

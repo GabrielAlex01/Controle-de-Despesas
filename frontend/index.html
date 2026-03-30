@@ -7,6 +7,8 @@
     <title>Controle de Despesas</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 
 
@@ -150,7 +152,11 @@
                 <input type="number" id="filtro-ano" placeholder="Ano" autocomplete="off">
             </div>
             <section id="comercial">
-                <h2>Comercial</h2>
+                <div class="section-header">
+                    <h2>Comercial</h2>
+                    <button class="btn-gerar-pdf-categoria btn-relatorio" data-categoria="comercial"
+                        style="display: none;">Gerar PDF Comercial</button>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -172,7 +178,11 @@
             </section>
 
             <section id="servicos">
-                <h2>Serviços</h2>
+                <div class="section-header">
+                    <h2>Serviços</h2>
+                    <button class="btn-gerar-pdf-categoria btn-relatorio" data-categoria="servicos"
+                        style="display: none;">Gerar PDF Serviços</button>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -194,7 +204,11 @@
             </section>
 
             <section id="despesas-extras">
-                <h2>Despesas Extras</h2>
+                <div class="section-header">
+                    <h2>Despesas Extras</h2>
+                    <button class="btn-gerar-pdf-categoria btn-relatorio" data-categoria="despesas-extras"
+                        style="display: none;">Gerar PDF Despesas Extras</button>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -423,6 +437,8 @@
         <div id="modal-relatorio-container" class="modal-container">
             <div class="modal" style="max-width: 800px;">
                 <h3 id="relatorio-titulo">Relatório de Despesa</h3>
+                <button id="btn-gerar-pdf-unico" class="btn-relatorio"
+                    style="display: none; margin-bottom: 15px;">Exportar Conta para PDF</button>
                 <div id="relatorio-grafico-container" style="margin-bottom: 20px;">
                     <canvas id="grafico-relatorio-despesa"></canvas>
                 </div>
