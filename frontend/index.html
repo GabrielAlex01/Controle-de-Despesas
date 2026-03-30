@@ -117,11 +117,11 @@
             <div id="resumo-container">
                 <div class="resumo-card">
                     <h4>Total Infraestrutura</h4>
-                    <span id="total-comercial">R$ 0,00</span>
+                    <span id="total-infraestrutura">R$ 0,00</span>
                 </div>
                 <div class="resumo-card">
                     <h4>Total Licenças de Software</h4>
-                    <span id="total-servicos">R$ 0,00</span>
+                    <span id="total-licencas">R$ 0,00</span>
                 </div>
                 <div class="resumo-card">
                     <h4>Total Desp. Extras</h4>
@@ -151,10 +151,10 @@
                 </select>
                 <input type="number" id="filtro-ano" placeholder="Ano" autocomplete="off">
             </div>
-            <section id="comercial">
+            <section id="infraestrutura">
                 <div class="section-header">
                     <h2>Infraestrutura</h2>
-                    <button class="btn-gerar-pdf-categoria btn-relatorio" data-categoria="comercial"
+                    <button class="btn-gerar-pdf-categoria btn-relatorio" data-categoria="infraestrutura"
                         style="display: none;">Gerar PDF Infraestrutura</button>
                 </div>
                 <div class="table-container">
@@ -171,16 +171,16 @@
                                 <th>Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="tabela-comercial">
+                        <tbody id="tabela-infraestrutura">
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <section id="servicos">
+            <section id="licencas">
                 <div class="section-header">
                     <h2>Licenças de Software</h2>
-                    <button class="btn-gerar-pdf-categoria btn-relatorio" data-categoria="servicos"
+                    <button class="btn-gerar-pdf-categoria btn-relatorio" data-categoria="licencas"
                         style="display: none;">Gerar PDF Licenças de Software</button>
                 </div>
                 <div class="table-container">
@@ -197,7 +197,7 @@
                                 <th>Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="tabela-servicos">
+                        <tbody id="tabela-licencas">
                         </tbody>
                     </table>
                 </div>
@@ -278,8 +278,8 @@
                     <div class="form-group">
                         <label for="categoria">Categoria</label>
                         <select id="categoria" required>
-                            <option value="comercial">Infraestrutura</option>
-                            <option value="servicos">Licenças de Software</option>
+                            <option value="infraestrutura">Infraestrutura</option>
+                            <option value="licencas">Licenças de Software</option>
                             <option value="despesas-extras">Despesas Extras</option>
                         </select>
                     </div>

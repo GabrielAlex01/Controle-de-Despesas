@@ -69,13 +69,13 @@ const notaFiscalInput = document.getElementById('nota-fiscal');
 const situacaoFinanceiroInput = document.getElementById('situacao-financeiro');
 const situacaoFiscalInput = document.getElementById('situacao-fiscal');
 const statusInput = document.getElementById('status');
-const tabelaComercialBody = document.getElementById('tabela-comercial');
-const tabelaServicosBody = document.getElementById('tabela-servicos');
+const tabelaInfraestruturaBody = document.getElementById('tabela-infraestrutura');
+const tabelaLicencasBody = document.getElementById('tabela-licencas');
 const tabelaDespesasExtrasBody = document.getElementById('tabela-despesas-extras');
 const filtroMesSelect = document.getElementById('filtro-mes');
 const filtroAnoInput = document.getElementById('filtro-ano');
-const totalComercialSpan = document.getElementById('total-comercial');
-const totalServicosSpan = document.getElementById('total-servicos');
+const totalInfraestruturaSpan = document.getElementById('total-infraestrutura');
+const totalLicencasSpan = document.getElementById('total-licencas');
 const totalDespesasExtrasSpan = document.getElementById('total-despesas-extras');
 const totalGeralSpan = document.getElementById('total-geral');
 const btnExcluirConfirmar = document.getElementById('btn-excluir-confirmar');
@@ -134,8 +134,8 @@ const valorFixoInput = document.getElementById('valor-fixo');
 const secoesPrincipais = [
     document.getElementById('resumo-container'),
     document.querySelector('.filters-container'),
-    document.getElementById('comercial'),
-    document.getElementById('servicos'),
+    document.getElementById('infraestrutura'),
+    document.getElementById('licencas'),
     document.getElementById('despesas-extras'),
     document.getElementById('grafico-container')
 ];
@@ -660,8 +660,8 @@ function inicializarApp() {
 // Função para renderizar as tabelas de despesas
 // Função para renderizar as tabelas de despesas (CORRIGIDA: SOMA APENAS PAGOS)
 function renderizarTabelas() {
-    tabelaComercialBody.innerHTML = '';
-    tabelaServicosBody.innerHTML = '';
+    tabelaInfraestruturaBody.innerHTML = '';
+    tabelaLicencasBody.innerHTML = '';
     tabelaDespesasExtrasBody.innerHTML = '';
     const mesSelecionado = filtroMesSelect.value; // ex: "1" ou "todos"
     const anoSelecionado = filtroAnoInput.value; // ex: "2026"
@@ -737,50 +737,50 @@ function renderizarTabelas() {
             <td>${botoesAcaoHtml}</td>
         `;
         switch (despesa.categoria) {
-            case 'comercial':
-                tabelaComercialBody.appendChild(tr);
+            case 'infraestrutura':
+                tabelaInfraestruturaBody.appendChild(tr);
                 break;
-            case 'servicos':
-                tabelaServicosBody.appendChild(tr);
+            case 'licencas':
+                tabelaLicencasBody.appendChild(tr);
                 break;
             case 'despesas-extras':
                 tabelaDespesasExtrasBody.appendChild(tr);
                 break;
         }
-    });
-    // LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos)
-    let totalComercial = 0, totalServicos = 0, totalDespesasExtras = 0;
-    despesas.forEach(d => {
-        const data = new Date(d.vencimento);
-        const mes = data.getUTCMonth() + 1;
-        const ano = data.getUTCFullYear();
-        // Verifica filtros de data
-        const filtroMesOk = mesSelecionado === 'todos' || mes.toString() === mesSelecionado;
-        const filtroAnoOk = anoSelecionado === '' || ano.toString() === anoSelecionado;
-        // Verifica se está PAGO (Regra Solicitada)
-        const estaPago = d.status === 'Pago';
-        if (filtroMesOk && filtroAnoOk && estaPago) {
-            switch (d.categoria) {
-                case 'comercial':
-                    totalComercial += Number(d.valor);
-                    break;
-                case 'servicos':
-                    totalServicos += Number(d.valor);
-                    break;
-                case 'despesas-extras':
-                    totalDespesasExtras += Number(d.valor);
-                    break;
+        // LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos)
+        let totalInfra = 0, totalLicencas = 0, totalDespesasExtras = 0;
+        despesas.forEach(d => {
+            const data = new Date(d.vencimento);
+            const mes = data.getUTCMonth() + 1;
+            const ano = data.getUTCFullYear();
+            // Verifica filtros de data
+            const filtroMesOk = mesSelecionado === 'todos' || mes.toString() === mesSelecionado;
+            const filtroAnoOk = anoSelecionado === '' || ano.toString() === anoSelecionado;
+            // Verifica se está PAGO (Regra Solicitada)
+            const estaPago = d.status === 'Pago';
+            if (filtroMesOk && filtroAnoOk && estaPago) {
+                switch (d.categoria) {
+                    case 'infraestrutura':
+                        totalInfra += Number(d.valor);
+                        break;
+                    case 'licencas':
+                        totalLicencas += Number(d.valor);
+                        break;
+                    case 'despesas-extras':
+                        totalDespesasExtras += Number(d.valor);
+                        break;
+                }
             }
-        }
+        });
+        // Atualiza os Cards
+        const totalGeral = totalInfra + totalLicencas + totalDespesasExtras;
+        const formatarMoeda = (valor) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        totalInfraestruturaSpan.innerText = formatarMoeda(totalInfra);
+        totalLicencasSpan.innerText = formatarMoeda(totalLicencas);
+        totalDespesasExtrasSpan.innerText = formatarMoeda(totalDespesasExtras);
+        totalGeralSpan.innerText = formatarMoeda(totalGeral);
+        renderizarGrafico();
     });
-    // Atualiza os Cards
-    const totalGeral = totalComercial + totalServicos + totalDespesasExtras;
-    const formatarMoeda = (valor) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    totalComercialSpan.innerText = formatarMoeda(totalComercial);
-    totalServicosSpan.innerText = formatarMoeda(totalServicos);
-    totalDespesasExtrasSpan.innerText = formatarMoeda(totalDespesasExtras);
-    totalGeralSpan.innerText = formatarMoeda(totalGeral);
-    renderizarGrafico();
 }
 // Função para renderizar o gráfico de despesas
 function renderizarGrafico() {
@@ -788,17 +788,17 @@ function renderizarGrafico() {
     if (isNaN(anoSelecionado))
         return;
     const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const dadosComercial = new Array(12).fill(0);
-    const dadosServicos = new Array(12).fill(0);
+    const dadosInfra = new Array(12).fill(0);
+    const dadosLicencas = new Array(12).fill(0);
     const dadosExtras = new Array(12).fill(0);
     const despesasDoAno = despesas.filter(d => new Date(d.vencimento).getUTCFullYear() === anoSelecionado);
     despesasDoAno.forEach(despesa => {
         const mes = new Date(despesa.vencimento).getUTCMonth();
         const valor = Number(despesa.valor);
-        if (despesa.categoria === 'comercial')
-            dadosComercial[mes] += valor;
-        else if (despesa.categoria === 'servicos')
-            dadosServicos[mes] += valor;
+        if (despesa.categoria === 'infraestrutura')
+            dadosInfra[mes] += valor;
+        else if (despesa.categoria === 'licencas')
+            dadosLicencas[mes] += valor;
         else if (despesa.categoria === 'despesas-extras')
             dadosExtras[mes] += valor;
     });
@@ -812,8 +812,8 @@ function renderizarGrafico() {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Infraestrutura', data: dadosComercial, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 },
-                { label: 'Licenças de Software', data: dadosServicos, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 },
+                { label: 'Infraestrutura', data: dadosInfra, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 },
+                { label: 'Licenças de Software', data: dadosLicencas, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 },
                 { label: 'Desp. Extras', data: dadosExtras, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }
             ]
         },
@@ -890,8 +890,8 @@ function handleTabelasClick(event) {
         }
     });
 }
-tabelaComercialBody.addEventListener('click', handleTabelasClick);
-tabelaServicosBody.addEventListener('click', handleTabelasClick);
+tabelaInfraestruturaBody.addEventListener('click', handleTabelasClick);
+tabelaLicencasBody.addEventListener('click', handleTabelasClick);
 tabelaDespesasExtrasBody.addEventListener('click', handleTabelasClick);
 tabelaUsuariosBody.addEventListener('click', (event) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -1061,12 +1061,12 @@ botoesGerarPdfCategoria.forEach(btn => {
         const categoria = e.target.dataset.categoria;
         let idTabela = '';
         let datasetIndex = 0;
-        if (categoria === 'comercial') {
-            idTabela = 'tabela-comercial';
+        if (categoria === 'infraestrutura') {
+            idTabela = 'tabela-infraestrutura';
             datasetIndex = 0;
         }
-        else if (categoria === 'servicos') {
-            idTabela = 'tabela-servicos';
+        else if (categoria === 'licencas') {
+            idTabela = 'tabela-licencas';
             datasetIndex = 1;
         }
         else if (categoria === 'despesas-extras') {

@@ -34,7 +34,7 @@ interface Despesa {
     fornecedor: string;
     valor: number;
     vencimento: string;
-    categoria: 'comercial' | 'servicos' | 'despesas-extras';
+    categoria: 'infraestrutura' | 'licencas' | 'despesas-extras';
     periodicidade: 'Unica' | 'Mensal' | 'Anual' | 'Parcelada';
     notaFiscal: string;
     situacaoFinanceiro: 'Pendente' | 'Entregue';
@@ -94,13 +94,13 @@ const notaFiscalInput = document.getElementById('nota-fiscal') as HTMLInputEleme
 const situacaoFinanceiroInput = document.getElementById('situacao-financeiro') as HTMLSelectElement;
 const situacaoFiscalInput = document.getElementById('situacao-fiscal') as HTMLSelectElement;
 const statusInput = document.getElementById('status') as HTMLSelectElement;
-const tabelaComercialBody = document.getElementById('tabela-comercial') as HTMLTableSectionElement;
-const tabelaServicosBody = document.getElementById('tabela-servicos') as HTMLTableSectionElement;
+const tabelaInfraestruturaBody = document.getElementById('tabela-infraestrutura') as HTMLTableSectionElement;
+const tabelaLicencasBody = document.getElementById('tabela-licencas') as HTMLTableSectionElement;
 const tabelaDespesasExtrasBody = document.getElementById('tabela-despesas-extras') as HTMLTableSectionElement;
 const filtroMesSelect = document.getElementById('filtro-mes') as HTMLSelectElement;
 const filtroAnoInput = document.getElementById('filtro-ano') as HTMLInputElement;
-const totalComercialSpan = document.getElementById('total-comercial') as HTMLSpanElement;
-const totalServicosSpan = document.getElementById('total-servicos') as HTMLSpanElement;
+const totalInfraestruturaSpan = document.getElementById('total-infraestrutura') as HTMLSpanElement;
+const totalLicencasSpan = document.getElementById('total-licencas') as HTMLSpanElement;
 const totalDespesasExtrasSpan = document.getElementById('total-despesas-extras') as HTMLSpanElement;
 const totalGeralSpan = document.getElementById('total-geral') as HTMLSpanElement;
 const btnExcluirConfirmar = document.getElementById('btn-excluir-confirmar') as HTMLButtonElement;
@@ -160,8 +160,8 @@ const valorFixoInput = document.getElementById('valor-fixo') as HTMLInputElement
 const secoesPrincipais = [
     document.getElementById('resumo-container'),
     document.querySelector('.filters-container'),
-    document.getElementById('comercial'),
-    document.getElementById('servicos'),
+    document.getElementById('infraestrutura'),
+    document.getElementById('licencas'),
     document.getElementById('despesas-extras'),
     document.getElementById('grafico-container')
 ];
@@ -719,8 +719,8 @@ function inicializarApp() {
 // Função para renderizar as tabelas de despesas
 // Função para renderizar as tabelas de despesas (CORRIGIDA: SOMA APENAS PAGOS)
 function renderizarTabelas() {
-    tabelaComercialBody.innerHTML = '';
-    tabelaServicosBody.innerHTML = '';
+    tabelaInfraestruturaBody.innerHTML = '';
+    tabelaLicencasBody.innerHTML = '';
     tabelaDespesasExtrasBody.innerHTML = '';
 
     const mesSelecionado = filtroMesSelect.value; // ex: "1" ou "todos"
@@ -803,501 +803,503 @@ function renderizarTabelas() {
         `;
 
         switch (despesa.categoria) {
-            case 'comercial': tabelaComercialBody.appendChild(tr); break;
-            case 'servicos': tabelaServicosBody.appendChild(tr); break;
+            case 'infraestrutura': tabelaInfraestruturaBody.appendChild(tr); break;
+            case 'licencas': tabelaLicencasBody.appendChild(tr); break;
             case 'despesas-extras': tabelaDespesasExtrasBody.appendChild(tr); break;
         }
-    });
 
-    // LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos)
-    let totalComercial = 0, totalServicos = 0, totalDespesasExtras = 0;
+        // LÓGICA DE CÁLCULO (Soma Real dos Valores Pagos)
+        let totalInfra = 0, totalLicencas = 0, totalDespesasExtras = 0;
 
-    despesas.forEach(d => {
-        const data = new Date(d.vencimento);
-        const mes = data.getUTCMonth() + 1;
-        const ano = data.getUTCFullYear();
+        despesas.forEach(d => {
+            const data = new Date(d.vencimento);
+            const mes = data.getUTCMonth() + 1;
+            const ano = data.getUTCFullYear();
 
-        // Verifica filtros de data
-        const filtroMesOk = mesSelecionado === 'todos' || mes.toString() === mesSelecionado;
-        const filtroAnoOk = anoSelecionado === '' || ano.toString() === anoSelecionado;
+            // Verifica filtros de data
+            const filtroMesOk = mesSelecionado === 'todos' || mes.toString() === mesSelecionado;
+            const filtroAnoOk = anoSelecionado === '' || ano.toString() === anoSelecionado;
 
-        // Verifica se está PAGO (Regra Solicitada)
-        const estaPago = d.status === 'Pago';
+            // Verifica se está PAGO (Regra Solicitada)
+            const estaPago = d.status === 'Pago';
 
-        if (filtroMesOk && filtroAnoOk && estaPago) {
-            switch (d.categoria) {
-                case 'comercial': totalComercial += Number(d.valor); break;
-                case 'servicos': totalServicos += Number(d.valor); break;
-                case 'despesas-extras': totalDespesasExtras += Number(d.valor); break;
+            if (filtroMesOk && filtroAnoOk && estaPago) {
+                switch (d.categoria) {
+                    case 'infraestrutura': totalInfra += Number(d.valor); break;
+                    case 'licencas': totalLicencas += Number(d.valor); break;
+                    case 'despesas-extras': totalDespesasExtras += Number(d.valor); break;
+                }
             }
-        }
-    });
+        });
 
-    // Atualiza os Cards
-    const totalGeral = totalComercial + totalServicos + totalDespesasExtras;
-    const formatarMoeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        // Atualiza os Cards
+        const totalGeral = totalInfra + totalLicencas + totalDespesasExtras;
+        const formatarMoeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    totalComercialSpan.innerText = formatarMoeda(totalComercial);
-    totalServicosSpan.innerText = formatarMoeda(totalServicos);
-    totalDespesasExtrasSpan.innerText = formatarMoeda(totalDespesasExtras);
-    totalGeralSpan.innerText = formatarMoeda(totalGeral);
+        totalInfraestruturaSpan.innerText = formatarMoeda(totalInfra);
+        totalLicencasSpan.innerText = formatarMoeda(totalLicencas);
+        totalDespesasExtrasSpan.innerText = formatarMoeda(totalDespesasExtras);
+        totalGeralSpan.innerText = formatarMoeda(totalGeral);
 
-    renderizarGrafico();
-}
+        renderizarGrafico();
+    }
+    
+);}
+
 
 // Função para renderizar o gráfico de despesas
 function renderizarGrafico() {
-    const anoSelecionado = parseInt(filtroAnoInput.value, 10);
-    if (isNaN(anoSelecionado)) return;
-    const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const dadosComercial = new Array(12).fill(0);
-    const dadosServicos = new Array(12).fill(0);
-    const dadosExtras = new Array(12).fill(0);
-    const despesasDoAno = despesas.filter(d => new Date(d.vencimento).getUTCFullYear() === anoSelecionado);
-    despesasDoAno.forEach(despesa => {
-        const mes = new Date(despesa.vencimento).getUTCMonth();
-        const valor = Number(despesa.valor);
-        if (despesa.categoria === 'comercial') dadosComercial[mes] += valor;
-        else if (despesa.categoria === 'servicos') dadosServicos[mes] += valor;
-        else if (despesa.categoria === 'despesas-extras') dadosExtras[mes] += valor;
-    });
-    const ctx = (document.getElementById('grafico-despesas') as HTMLCanvasElement).getContext('2d');
-    if (!ctx) return;
-    if (meuGrafico) meuGrafico.destroy();
-    meuGrafico = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Infraestrutura', data: dadosComercial, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 },
-                { label: 'Licenças de Software', data: dadosServicos, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 },
-                { label: 'Desp. Extras', data: dadosExtras, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: `Evolução de Despesas - ${anoSelecionado}` } } }
-    });
-}
+            const anoSelecionado = parseInt(filtroAnoInput.value, 10);
+            if (isNaN(anoSelecionado)) return;
+            const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const dadosInfra = new Array(12).fill(0);
+            const dadosLicencas = new Array(12).fill(0);
+            const dadosExtras = new Array(12).fill(0);
+            const despesasDoAno = despesas.filter(d => new Date(d.vencimento).getUTCFullYear() === anoSelecionado);
+            despesasDoAno.forEach(despesa => {
+                const mes = new Date(despesa.vencimento).getUTCMonth();
+                const valor = Number(despesa.valor);
+                if (despesa.categoria === 'infraestrutura') dadosInfra[mes] += valor;
+                else if (despesa.categoria === 'licencas') dadosLicencas[mes] += valor;
+                else if (despesa.categoria === 'despesas-extras') dadosExtras[mes] += valor;
+            });
+            const ctx = (document.getElementById('grafico-despesas') as HTMLCanvasElement).getContext('2d');
+            if (!ctx) return;
+            if (meuGrafico) meuGrafico.destroy();
+            meuGrafico = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Infraestrutura', data: dadosInfra, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.1 },
+                        { label: 'Licenças de Software', data: dadosLicencas, borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: true, tension: 0.1 },
+                        { label: 'Desp. Extras', data: dadosExtras, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: `Evolução de Despesas - ${anoSelecionado}` } } }
+            });
+        }
 
 // Adicionando os Event Listeners Finais
 document.addEventListener('DOMContentLoaded', inicializarApp);
-formLogin.addEventListener('submit', handleLogin);
-btnLogout.addEventListener('click', handleLogout);
-btnNovaDespesa.addEventListener('click', () => abrirModal());
-btnCancelar.addEventListener('click', fecharModal);
-formDespesa.addEventListener('submit', handleFormSubmit);
-filtroMesSelect.addEventListener('change', renderizarTabelas);
-filtroAnoInput.addEventListener('change', renderizarTabelas);
-btnGerenciarUsuarios.addEventListener('click', () => {
-    mostrarTelaGerenciamentoUsuarios();
-    carregarUsuariosDoBackend();
-});
+    formLogin.addEventListener('submit', handleLogin);
+    btnLogout.addEventListener('click', handleLogout);
+    btnNovaDespesa.addEventListener('click', () => abrirModal());
+    btnCancelar.addEventListener('click', fecharModal);
+    formDespesa.addEventListener('submit', handleFormSubmit);
+    filtroMesSelect.addEventListener('change', renderizarTabelas);
+    filtroAnoInput.addEventListener('change', renderizarTabelas);
+    btnGerenciarUsuarios.addEventListener('click', () => {
+        mostrarTelaGerenciamentoUsuarios();
+        carregarUsuariosDoBackend();
+    });
 
-btnAdicionarUsuario.addEventListener('click', () => {
-    formRegistrar.reset();
-    modalRegistrarContainer.classList.add('active');
-});
-btnRegistrarCancelar.addEventListener('click', fecharModalRegistrar);
-formRegistrar.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const nome = registrarNomeInput.value;
-    const email = registrarEmailInput.value;
-    const senha = registrarSenhaInput.value;
-    if (!nome || !email || !senha) {
-        alert('Todos os campos são obrigatórios.');
-        return;
-    }
-    try {
-        const response = await fetchComToken(`${API_BASE_URL}/auth/registrar`, {
-            method: 'POST',
-            body: JSON.stringify({ nome, email, senha }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || 'Falha ao criar usuário.');
+    btnAdicionarUsuario.addEventListener('click', () => {
+        formRegistrar.reset();
+        modalRegistrarContainer.classList.add('active');
+    });
+    btnRegistrarCancelar.addEventListener('click', fecharModalRegistrar);
+    formRegistrar.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const nome = registrarNomeInput.value;
+        const email = registrarEmailInput.value;
+        const senha = registrarSenhaInput.value;
+        if (!nome || !email || !senha) {
+            alert('Todos os campos são obrigatórios.');
+            return;
         }
-        alert('Novo usuário criado com sucesso!');
-        fecharModalRegistrar();
-        await carregarUsuariosDoBackend();
-    } catch (error: any) {
-        console.error('Erro ao registrar novo usuário:', error);
-        alert(`Erro: ${error.message}`);
-    }
-});
-
-async function handleTabelasClick(event: MouseEvent) { // Adicionado async
-    const target = event.target as HTMLElement;
-    const tr = target.closest('tr');
-    if (!tr || !tr.dataset.id) return;
-
-    const id = parseInt(tr.dataset.id, 10);
-    const despesa = despesas.find(d => d.id === id);
-    if (!despesa) return;
-
-    if (target.classList.contains('btn-editar')) {
-        abrirModal(true, despesa);
-    } else if (target.classList.contains('btn-excluir')) {
-        excluirDespesa(id);
-    } else if (target.classList.contains('btn-relatorio')) {
-        modalRelatorioContainer.classList.add('active');
-        // Mostra um "carregando" enquanto busca os dados
-        tabelaRelatorioBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
-        const dadosRelatorio = await fetchRelatorioData(despesa.fornecedor);
-        renderizarRelatorio(despesa.fornecedor, dadosRelatorio);
-    }
-}
-
-tabelaComercialBody.addEventListener('click', handleTabelasClick);
-tabelaServicosBody.addEventListener('click', handleTabelasClick);
-tabelaDespesasExtrasBody.addEventListener('click', handleTabelasClick);
-tabelaUsuariosBody.addEventListener('click', async (event) => {
-    const target = event.target as HTMLElement;
-    const id = target.dataset.id;
-    const nome = target.dataset.nome; // Usamos o data-nome que adicionamos
-
-    if (!id || !nome) return;
-
-    // Lógica para ALTERAR PAPEL (já existente, com pequena melhoria)
-    if (target.classList.contains('btn-editar-usuario')) {
-        const usuarioParaEditar = { id: parseInt(id), nome: nome, papel: (target.closest('tr')?.children[3].textContent || 'visualizador') as Usuario['papel'] };
-        usuarioIdPapelInput.value = usuarioParaEditar.id.toString();
-        nomeUsuarioPapelSpan.innerText = usuarioParaEditar.nome;
-        selectPapel.value = usuarioParaEditar.papel;
-        modalPapelContainer.classList.add('active');
-    }
-
-    // Lógica para EXCLUIR USUÁRIO
-    if (target.classList.contains('btn-excluir-usuario')) {
-        idUsuarioParaExcluir = parseInt(id, 10);
-        nomeUsuarioExcluirSpan.innerText = nome; // Mostra o nome no modal
-        modalExcluirUsuarioContainer.classList.add('active');
-    }
-});
-btnPapelCancelar.addEventListener('click', fecharModalPapel);
-formPapel.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const id = usuarioIdPapelInput.value;
-    const novoPapel = selectPapel.value;
-    if (!id) return;
-    try {
-        const response = await fetchComToken(`${API_BASE_URL}/usuarios/${id}/papel`, {
-            method: 'PUT',
-            body: JSON.stringify({ papel: novoPapel }),
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Falha ao atualizar o papel.');
-        }
-        alert('Papel do usuário atualizado com sucesso!');
-        fecharModalPapel();
-        await carregarUsuariosDoBackend();
-    } catch (error: any) {
-        console.error('Erro ao atualizar papel:', error);
-        alert(`Erro: ${error.message}`);
-    }
-});
-btnExcluirCancelar.addEventListener('click', () => {
-    idParaExcluir = null;
-    modalExcluirContainer.classList.remove('active');
-});
-btnExcluirConfirmar.addEventListener('click', async () => {
-    if (idParaExcluir !== null) {
         try {
-            const response = await fetchComToken(`${API_BASE_URL}/despesas/${idParaExcluir}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Falha ao excluir despesa.');
-            await carregarDespesasDoBackend();
-        } catch (error) {
-            console.error('Erro ao excluir despesa:', error);
-            alert('Não foi possível excluir a despesa.');
-        } finally {
-            idParaExcluir = null;
-            modalExcluirContainer.classList.remove('active');
-        }
-    }
-});
-periodicidadeInput.addEventListener('change', () => {
-    if (periodicidadeInput.value === 'Parcelada') {
-        containerParcelas.style.display = 'block';
-        numeroParcelasInput.required = true;
-    } else {
-        containerParcelas.style.display = 'none';
-        numeroParcelasInput.required = false;
-    }
-});
-
-btnAlterarSenha.addEventListener('click', () => {
-    modalSenhaContainer.classList.add('active');
-});
-
-// Fecha o modal de alterar senha
-btnSenhaCancelar.addEventListener('click', fecharModalSenha);
-
-// Lógica para enviar o formulário de alteração de senha
-formSenha.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    const senhaAtual = senhaAtualInput.value;
-    const novaSenha = novaSenhaInput.value;
-    const confirmarNovaSenha = confirmarNovaSenhaInput.value;
-
-    // Validação no front-end
-    if (novaSenha !== confirmarNovaSenha) {
-        alert('A nova senha e a confirmação não são iguais.');
-        return;
-    }
-    if (novaSenha.length < 6) {
-        alert('A nova senha deve ter pelo menos 6 caracteres.');
-        return;
-    }
-
-    try {
-        const response = await fetchComToken(`${API_BASE_URL}/usuarios/alterar-senha`, {
-            method: 'PUT',
-            body: JSON.stringify({ senhaAtual, novaSenha }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            // Usa a mensagem de erro vinda da API
-            throw new Error(data.error || 'Falha ao alterar a senha.');
-        }
-
-        alert('Senha alterada com sucesso! Por segurança, recomendamos que faça o login novamente.');
-        fecharModalSenha();
-
-        // Força o logout e o recarregamento para a tela de login
-        handleLogout();
-
-    } catch (error: any) {
-        console.error('Erro ao alterar senha:', error);
-        alert(`Erro: ${error.message}`);
-    }
-});
-
-async function validarEGerarPDF(tipoRelatorio: string, alvo: string, dadosTabela: any[], colunas: string[], imagemBase64Injetar: string | null = null) {
-    try {
-        const response = await fetchComToken(`${API_BASE_URL}/relatorios/log-geracao`, {
-            method: 'POST',
-            body: JSON.stringify({ tipoRelatorio, alvo })
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Sem permissão para gerar relatório.');
-        }
-
-        const infoSeguranca = await response.json();
-        const { jsPDF } = (window as any).jspdf;
-        const doc = new jsPDF();
-
-        // Cabeçalhos
-        doc.setFontSize(16);
-        doc.text(`Relatório de Despesas: ${alvo}`, 14, 20);
-
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Documento gerado sob supervisão do sistema.`, 14, 30);
-        doc.text(`Responsável: ${infoSeguranca.geradoPor}`, 14, 36);
-        doc.text(`Data e Hora: ${infoSeguranca.dataGeracao}`, 14, 42);
-
-        let startYParaTabela = 50;
-
-        // INJEÇÃO DIRETA DO BASE64 
-        if (imagemBase64Injetar) {
-            doc.addImage(imagemBase64Injetar, 'PNG', 14, 50, 180, 60);
-            startYParaTabela = 120; // Empurra a tabela para baixo para não sobrepor a imagem
-        }
-
-        doc.autoTable({
-            startY: startYParaTabela,
-            head: [colunas],
-            body: dadosTabela,
-            theme: 'striped',
-            styles: { fontSize: 9 }
-        });
-
-        doc.save(`Relatorio_${alvo.replace(/\s+/g, '_')}.pdf`);
-        mostrarToast('PDF exportado e ação registrada no log!', 'sucesso');
-
-    } catch (error: any) {
-        console.error(error);
-        mostrarToast(`Erro: ${error.message}`, 'erro');
-    }
-}
-
-botoesGerarPdfCategoria.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        const categoria = (e.target as HTMLElement).dataset.categoria;
-
-        let idTabela = '';
-        let datasetIndex = 0;
-        if (categoria === 'comercial') { idTabela = 'tabela-comercial'; datasetIndex = 0; }
-        else if (categoria === 'servicos') { idTabela = 'tabela-servicos'; datasetIndex = 1; }
-        else if (categoria === 'despesas-extras') { idTabela = 'tabela-despesas-extras'; datasetIndex = 2; }
-
-        const tabelaBody = document.getElementById(idTabela);
-        if (!tabelaBody) return;
-
-        const linhas = Array.from(tabelaBody.querySelectorAll('tr'));
-        const dados = linhas.map(tr => {
-            const tds = tr.querySelectorAll('td');
-            const status = tr.classList.contains('status-pago') ? 'Pago' : 'Pendente';
-            return [tds[0].innerText, tds[1].innerText, tds[2].innerText, status];
-        });
-
-        let imagemBase64 = null;
-        if (meuGrafico) {
-            // Oculta todos os datasets temporariamente, deixando só a categoria certa
-            meuGrafico.data.datasets.forEach((ds: any, index: number) => {
-                ds.hidden = (index !== datasetIndex);
+            const response = await fetchComToken(`${API_BASE_URL}/auth/registrar`, {
+                method: 'POST',
+                body: JSON.stringify({ nome, email, senha }),
             });
-            meuGrafico.update('none'); // Renderiza instantaneamente sem animação
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Falha ao criar usuário.');
+            }
+            alert('Novo usuário criado com sucesso!');
+            fecharModalRegistrar();
+            await carregarUsuariosDoBackend();
+        } catch (error: any) {
+            console.error('Erro ao registrar novo usuário:', error);
+            alert(`Erro: ${error.message}`);
+        }
+    });
 
-            imagemBase64 = meuGrafico.toBase64Image();
+    async function handleTabelasClick(event: MouseEvent) { // Adicionado async
+        const target = event.target as HTMLElement;
+        const tr = target.closest('tr');
+        if (!tr || !tr.dataset.id) return;
 
-            // Restaura o gráfico original para o usuário ver tudo normal
-            meuGrafico.data.datasets.forEach((ds: any) => {
-                ds.hidden = false;
+        const id = parseInt(tr.dataset.id, 10);
+        const despesa = despesas.find(d => d.id === id);
+        if (!despesa) return;
+
+        if (target.classList.contains('btn-editar')) {
+            abrirModal(true, despesa);
+        } else if (target.classList.contains('btn-excluir')) {
+            excluirDespesa(id);
+        } else if (target.classList.contains('btn-relatorio')) {
+            modalRelatorioContainer.classList.add('active');
+            // Mostra um "carregando" enquanto busca os dados
+            tabelaRelatorioBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
+            const dadosRelatorio = await fetchRelatorioData(despesa.fornecedor);
+            renderizarRelatorio(despesa.fornecedor, dadosRelatorio);
+        }
+    }
+
+    tabelaInfraestruturaBody.addEventListener('click', handleTabelasClick);
+    tabelaLicencasBody.addEventListener('click', handleTabelasClick);
+    tabelaDespesasExtrasBody.addEventListener('click', handleTabelasClick);
+    tabelaUsuariosBody.addEventListener('click', async (event) => {
+        const target = event.target as HTMLElement;
+        const id = target.dataset.id;
+        const nome = target.dataset.nome; // Usamos o data-nome que adicionamos
+
+        if (!id || !nome) return;
+
+        // Lógica para ALTERAR PAPEL (já existente, com pequena melhoria)
+        if (target.classList.contains('btn-editar-usuario')) {
+            const usuarioParaEditar = { id: parseInt(id), nome: nome, papel: (target.closest('tr')?.children[3].textContent || 'visualizador') as Usuario['papel'] };
+            usuarioIdPapelInput.value = usuarioParaEditar.id.toString();
+            nomeUsuarioPapelSpan.innerText = usuarioParaEditar.nome;
+            selectPapel.value = usuarioParaEditar.papel;
+            modalPapelContainer.classList.add('active');
+        }
+
+        // Lógica para EXCLUIR USUÁRIO
+        if (target.classList.contains('btn-excluir-usuario')) {
+            idUsuarioParaExcluir = parseInt(id, 10);
+            nomeUsuarioExcluirSpan.innerText = nome; // Mostra o nome no modal
+            modalExcluirUsuarioContainer.classList.add('active');
+        }
+    });
+    btnPapelCancelar.addEventListener('click', fecharModalPapel);
+    formPapel.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const id = usuarioIdPapelInput.value;
+        const novoPapel = selectPapel.value;
+        if (!id) return;
+        try {
+            const response = await fetchComToken(`${API_BASE_URL}/usuarios/${id}/papel`, {
+                method: 'PUT',
+                body: JSON.stringify({ papel: novoPapel }),
             });
-            meuGrafico.update('none');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Falha ao atualizar o papel.');
+            }
+            alert('Papel do usuário atualizado com sucesso!');
+            fecharModalPapel();
+            await carregarUsuariosDoBackend();
+        } catch (error: any) {
+            console.error('Erro ao atualizar papel:', error);
+            alert(`Erro: ${error.message}`);
+        }
+    });
+    btnExcluirCancelar.addEventListener('click', () => {
+        idParaExcluir = null;
+        modalExcluirContainer.classList.remove('active');
+    });
+    btnExcluirConfirmar.addEventListener('click', async () => {
+        if (idParaExcluir !== null) {
+            try {
+                const response = await fetchComToken(`${API_BASE_URL}/despesas/${idParaExcluir}`, { method: 'DELETE' });
+                if (!response.ok) throw new Error('Falha ao excluir despesa.');
+                await carregarDespesasDoBackend();
+            } catch (error) {
+                console.error('Erro ao excluir despesa:', error);
+                alert('Não foi possível excluir a despesa.');
+            } finally {
+                idParaExcluir = null;
+                modalExcluirContainer.classList.remove('active');
+            }
+        }
+    });
+    periodicidadeInput.addEventListener('change', () => {
+        if (periodicidadeInput.value === 'Parcelada') {
+            containerParcelas.style.display = 'block';
+            numeroParcelasInput.required = true;
+        } else {
+            containerParcelas.style.display = 'none';
+            numeroParcelasInput.required = false;
+        }
+    });
+
+    btnAlterarSenha.addEventListener('click', () => {
+        modalSenhaContainer.classList.add('active');
+    });
+
+    // Fecha o modal de alterar senha
+    btnSenhaCancelar.addEventListener('click', fecharModalSenha);
+
+    // Lógica para enviar o formulário de alteração de senha
+    formSenha.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const senhaAtual = senhaAtualInput.value;
+        const novaSenha = novaSenhaInput.value;
+        const confirmarNovaSenha = confirmarNovaSenhaInput.value;
+
+        // Validação no front-end
+        if (novaSenha !== confirmarNovaSenha) {
+            alert('A nova senha e a confirmação não são iguais.');
+            return;
+        }
+        if (novaSenha.length < 6) {
+            alert('A nova senha deve ter pelo menos 6 caracteres.');
+            return;
         }
 
-        validarEGerarPDF('Visão Geral', categoria!.toUpperCase(), dados, ['Fornecedor', 'Valor', 'Vencimento', 'Status'], imagemBase64);
-    });
-});
+        try {
+            const response = await fetchComToken(`${API_BASE_URL}/usuarios/alterar-senha`, {
+                method: 'PUT',
+                body: JSON.stringify({ senhaAtual, novaSenha }),
+            });
 
-// PDF da Conta Específica
-if (btnGerarPdfUnico) {
-    btnGerarPdfUnico.addEventListener('click', () => {
-        const fornecedor = relatorioTitulo.innerText.replace('Relatório de: ', '');
+            const data = await response.json();
 
-        const linhas = Array.from(tabelaRelatorioBody.querySelectorAll('tr'));
-        const dados = linhas.map(tr => {
-            const tds = tr.querySelectorAll('td');
-            return [tds[0].innerText, tds[1].innerText];
-        });
+            if (!response.ok) {
+                // Usa a mensagem de erro vinda da API
+                throw new Error(data.error || 'Falha ao alterar a senha.');
+            }
 
-        const imagemBase64 = graficoRelatorio ? graficoRelatorio.toBase64Image() : null;
+            alert('Senha alterada com sucesso! Por segurança, recomendamos que faça o login novamente.');
+            fecharModalSenha();
 
-        validarEGerarPDF('Conta Específica', fornecedor, dados, ['Vencimento', 'Valor Pago'], imagemBase64);
-    });
-}
+            // Força o logout e o recarregamento para a tela de login
+            handleLogout();
 
-btnVerLogs.addEventListener('click', () => {
-    mostrarTelaLogs();
-    carregarLogsDoBackend(1);
-});
-
-btnDashboard.addEventListener('click', (event) => {
-    event.preventDefault(); // Impede que o '#' apareça na URL
-    mostrarTelaApp();
-    renderizarTabelas(); // Garante que os dados sejam recarregados e filtrados corretamente
-});
-
-btnExcluirUsuarioCancelar.addEventListener('click', () => {
-    modalExcluirUsuarioContainer.classList.remove('active');
-    idUsuarioParaExcluir = null;
-});
-
-// Lógica de confirmação de exclusão de usuário (COM LOADING)
-btnExcluirUsuarioConfirmar.addEventListener('click', async () => {
-    if (idUsuarioParaExcluir === null) return;
-
-    // Ativa o Loading e trava o botão
-    setCarregando(btnExcluirUsuarioConfirmar, true, 'Confirmar Exclusão');
-
-    try {
-        const response = await fetchComToken(`${API_BASE_URL}/usuarios/${idUsuarioParaExcluir}`, {
-            method: 'DELETE'
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Falha ao excluir usuário.');
+        } catch (error: any) {
+            console.error('Erro ao alterar senha:', error);
+            alert(`Erro: ${error.message}`);
         }
+    });
 
-        // Toast verde + Atualizar lista
-        mostrarToast('Usuário excluído com sucesso!', 'sucesso');
-        await carregarUsuariosDoBackend();
+    async function validarEGerarPDF(tipoRelatorio: string, alvo: string, dadosTabela: any[], colunas: string[], imagemBase64Injetar: string | null = null) {
+        try {
+            const response = await fetchComToken(`${API_BASE_URL}/relatorios/log-geracao`, {
+                method: 'POST',
+                body: JSON.stringify({ tipoRelatorio, alvo })
+            });
 
-        // Fecha o modal apenas se deu certo
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Sem permissão para gerar relatório.');
+            }
+
+            const infoSeguranca = await response.json();
+            const { jsPDF } = (window as any).jspdf;
+            const doc = new jsPDF();
+
+            // Cabeçalhos
+            doc.setFontSize(16);
+            doc.text(`Relatório de Despesas: ${alvo}`, 14, 20);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Documento gerado sob supervisão do sistema.`, 14, 30);
+            doc.text(`Responsável: ${infoSeguranca.geradoPor}`, 14, 36);
+            doc.text(`Data e Hora: ${infoSeguranca.dataGeracao}`, 14, 42);
+
+            let startYParaTabela = 50;
+
+            // INJEÇÃO DIRETA DO BASE64 
+            if (imagemBase64Injetar) {
+                doc.addImage(imagemBase64Injetar, 'PNG', 14, 50, 180, 60);
+                startYParaTabela = 120; // Empurra a tabela para baixo para não sobrepor a imagem
+            }
+
+            doc.autoTable({
+                startY: startYParaTabela,
+                head: [colunas],
+                body: dadosTabela,
+                theme: 'striped',
+                styles: { fontSize: 9 }
+            });
+
+            doc.save(`Relatorio_${alvo.replace(/\s+/g, '_')}.pdf`);
+            mostrarToast('PDF exportado e ação registrada no log!', 'sucesso');
+
+        } catch (error: any) {
+            console.error(error);
+            mostrarToast(`Erro: ${error.message}`, 'erro');
+        }
+    }
+
+    botoesGerarPdfCategoria.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const categoria = (e.target as HTMLElement).dataset.categoria;
+
+            let idTabela = '';
+            let datasetIndex = 0;
+            if (categoria === 'infraestrutura') { idTabela = 'tabela-infraestrutura'; datasetIndex = 0; }
+            else if (categoria === 'licencas') { idTabela = 'tabela-licencas'; datasetIndex = 1; }
+            else if (categoria === 'despesas-extras') { idTabela = 'tabela-despesas-extras'; datasetIndex = 2; }
+
+            const tabelaBody = document.getElementById(idTabela);
+            if (!tabelaBody) return;
+
+            const linhas = Array.from(tabelaBody.querySelectorAll('tr'));
+            const dados = linhas.map(tr => {
+                const tds = tr.querySelectorAll('td');
+                const status = tr.classList.contains('status-pago') ? 'Pago' : 'Pendente';
+                return [tds[0].innerText, tds[1].innerText, tds[2].innerText, status];
+            });
+
+            let imagemBase64 = null;
+            if (meuGrafico) {
+                // Oculta todos os datasets temporariamente, deixando só a categoria certa
+                meuGrafico.data.datasets.forEach((ds: any, index: number) => {
+                    ds.hidden = (index !== datasetIndex);
+                });
+                meuGrafico.update('none'); // Renderiza instantaneamente sem animação
+
+                imagemBase64 = meuGrafico.toBase64Image();
+
+                // Restaura o gráfico original para o usuário ver tudo normal
+                meuGrafico.data.datasets.forEach((ds: any) => {
+                    ds.hidden = false;
+                });
+                meuGrafico.update('none');
+            }
+
+            validarEGerarPDF('Visão Geral', categoria!.toUpperCase(), dados, ['Fornecedor', 'Valor', 'Vencimento', 'Status'], imagemBase64);
+        });
+    });
+
+    // PDF da Conta Específica
+    if (btnGerarPdfUnico) {
+        btnGerarPdfUnico.addEventListener('click', () => {
+            const fornecedor = relatorioTitulo.innerText.replace('Relatório de: ', '');
+
+            const linhas = Array.from(tabelaRelatorioBody.querySelectorAll('tr'));
+            const dados = linhas.map(tr => {
+                const tds = tr.querySelectorAll('td');
+                return [tds[0].innerText, tds[1].innerText];
+            });
+
+            const imagemBase64 = graficoRelatorio ? graficoRelatorio.toBase64Image() : null;
+
+            validarEGerarPDF('Conta Específica', fornecedor, dados, ['Vencimento', 'Valor Pago'], imagemBase64);
+        });
+    }
+
+    btnVerLogs.addEventListener('click', () => {
+        mostrarTelaLogs();
+        carregarLogsDoBackend(1);
+    });
+
+    btnDashboard.addEventListener('click', (event) => {
+        event.preventDefault(); // Impede que o '#' apareça na URL
+        mostrarTelaApp();
+        renderizarTabelas(); // Garante que os dados sejam recarregados e filtrados corretamente
+    });
+
+    btnExcluirUsuarioCancelar.addEventListener('click', () => {
         modalExcluirUsuarioContainer.classList.remove('active');
         idUsuarioParaExcluir = null;
+    });
 
-    } catch (error: any) {
-        console.error('Erro ao excluir usuário:', error);
-        // Erro = Toast vermelho (Não fecha o modal para a pessoa tentar de novo se quiser)
-        mostrarToast(`Erro: ${error.message}`, 'erro');
-    } finally {
-        // Sempre destrava o botão no final
-        setCarregando(btnExcluirUsuarioConfirmar, false, 'Confirmar Exclusão');
-    }
-});
+    // Lógica de confirmação de exclusão de usuário (COM LOADING)
+    btnExcluirUsuarioConfirmar.addEventListener('click', async () => {
+        if (idUsuarioParaExcluir === null) return;
 
-btnLogsAnterior.addEventListener('click', () => {
-    if (logsPaginaAtual > 1) {
-        carregarLogsDoBackend(logsPaginaAtual - 1);
-    }
-});
+        // Ativa o Loading e trava o botão
+        setCarregando(btnExcluirUsuarioConfirmar, true, 'Confirmar Exclusão');
 
-btnLogsProximo.addEventListener('click', () => {
-    // A lógica de desabilitar o botão
-    carregarLogsDoBackend(logsPaginaAtual + 1);
-});
+        try {
+            const response = await fetchComToken(`${API_BASE_URL}/usuarios/${idUsuarioParaExcluir}`, {
+                method: 'DELETE'
+            });
 
-// Abre o modal de "esqueci a senha"
-console.log("Adicionando listener de clique ao link...");
-forgotPasswordLink.addEventListener('click', (e) => {
-    console.log("LINK FOI CLICADO!");
-    e.preventDefault();
-    modalForgotPasswordContainer.classList.add('active');
-});
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Falha ao excluir usuário.');
+            }
 
-// Fecha o modal
-btnForgotCancelar.addEventListener('click', () => {
-    modalForgotPasswordContainer.classList.remove('active');
-});
+            // Toast verde + Atualizar lista
+            mostrarToast('Usuário excluído com sucesso!', 'sucesso');
+            await carregarUsuariosDoBackend();
 
-// Envia o e-mail de redefinição
-formForgotPassword.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = forgotEmailInput.value;
-    try {
-        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-        });
-        if (!response.ok) {
-            // Se a resposta não for OK (ex: erro 500), lança um erro para o catch.
-            throw new Error('O servidor retornou um erro. Tente novamente mais tarde.');
+            // Fecha o modal apenas se deu certo
+            modalExcluirUsuarioContainer.classList.remove('active');
+            idUsuarioParaExcluir = null;
+
+        } catch (error: any) {
+            console.error('Erro ao excluir usuário:', error);
+            // Erro = Toast vermelho (Não fecha o modal para a pessoa tentar de novo se quiser)
+            mostrarToast(`Erro: ${error.message}`, 'erro');
+        } finally {
+            // Sempre destrava o botão no final
+            setCarregando(btnExcluirUsuarioConfirmar, false, 'Confirmar Exclusão');
         }
-        const data = await response.json();
-        // Mostramos a mesma mensagem sempre, por segurança
-        alert(data.message);
+    });
+
+    btnLogsAnterior.addEventListener('click', () => {
+        if (logsPaginaAtual > 1) {
+            carregarLogsDoBackend(logsPaginaAtual - 1);
+        }
+    });
+
+    btnLogsProximo.addEventListener('click', () => {
+        // A lógica de desabilitar o botão
+        carregarLogsDoBackend(logsPaginaAtual + 1);
+    });
+
+    // Abre o modal de "esqueci a senha"
+    console.log("Adicionando listener de clique ao link...");
+    forgotPasswordLink.addEventListener('click', (e) => {
+        console.log("LINK FOI CLICADO!");
+        e.preventDefault();
+        modalForgotPasswordContainer.classList.add('active');
+    });
+
+    // Fecha o modal
+    btnForgotCancelar.addEventListener('click', () => {
         modalForgotPasswordContainer.classList.remove('active');
-        formForgotPassword.reset();
-    } catch (error) {
-        console.error('Erro ao solicitar redefinição:', error);
-        alert('Ocorreu um erro. Tente novamente.');
-    }
-});
+    });
 
-btnRelatorioFechar.addEventListener('click', () => {
-    modalRelatorioContainer.classList.remove('active');
-});
+    // Envia o e-mail de redefinição
+    formForgotPassword.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = forgotEmailInput.value;
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            if (!response.ok) {
+                // Se a resposta não for OK (ex: erro 500), lança um erro para o catch.
+                throw new Error('O servidor retornou um erro. Tente novamente mais tarde.');
+            }
+            const data = await response.json();
+            // Mostramos a mesma mensagem sempre, por segurança
+            alert(data.message);
+            modalForgotPasswordContainer.classList.remove('active');
+            formForgotPassword.reset();
+        } catch (error) {
+            console.error('Erro ao solicitar redefinição:', error);
+            alert('Ocorreu um erro. Tente novamente.');
+        }
+    });
 
-temValorFixoCheckbox.addEventListener('change', () => {
-    if (temValorFixoCheckbox.checked) {
-        containerValorFixo.style.display = 'block';
-        valorFixoInput.required = true;
-    } else {
-        containerValorFixo.style.display = 'none';
-        valorFixoInput.required = false;
-    }
-});
+    btnRelatorioFechar.addEventListener('click', () => {
+        modalRelatorioContainer.classList.remove('active');
+    });
 
-document.addEventListener('DOMContentLoaded', () => {
-    carregarTemaInicial(); // Carrega o tema antes de tudo
-    inicializarApp();
-});
+    temValorFixoCheckbox.addEventListener('change', () => {
+        if (temValorFixoCheckbox.checked) {
+            containerValorFixo.style.display = 'block';
+            valorFixoInput.required = true;
+        } else {
+            containerValorFixo.style.display = 'none';
+            valorFixoInput.required = false;
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        carregarTemaInicial(); // Carrega o tema antes de tudo
+        inicializarApp();
+    });
